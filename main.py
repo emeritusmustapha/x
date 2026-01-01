@@ -37,7 +37,7 @@ app = FastAPI()
 class AuthData(BaseModel):
     username: str; password: str
 
-def get_12hr_time():
+def get_now_time():
     return datetime.now().strftime("%I:%M %p")
 
 def purge_old_messages(db):
@@ -58,8 +58,8 @@ async def register(data: AuthData):
         is_admin = (data.username == "emeritusmustapha")
         user = UserDB(username=data.username, password=hashed, is_admin=is_admin)
         db.add(user)
-        welcome_text = f"Hello {data.username}! 🌟 I'm emeritusmustapha, the creator. Welcome to LinkUp!"
-        db.add(MessageDB(sender="emeritusmustapha", receiver=data.username, content=welcome_text, time_label=get_12hr_time()))
+        welcome = f"Hello {data.username}! 🌟 I'm emeritusmustapha, the creator. Welcome to LinkUp!"
+        db.add(MessageDB(sender="emeritusmustapha", receiver=data.username, content=welcome, time_label=get_now_time()))
         db.commit()
         return {"message": "Success"}
     finally: db.close()
@@ -122,9 +122,8 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
         while True:
             data = await websocket.receive_json()
             db = SessionLocal()
-            t_label = get_12hr_time()
+            t_label = get_now_time()
             new_m = MessageDB(sender=user_id, receiver=data['to'], content=data['content'], time_label=t_label)
             db.add(new_m); db.commit(); db.close()
-            # Send message to recipient
             await manager.send({"from": user_id, "content": data['content'], "time": t_label}, data['to'])
     except WebSocketDisconnect: manager.disconnect(user_id)
