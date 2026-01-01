@@ -24,11 +24,11 @@ class UserDB(Base):
 
 class MessageDB(Base):
     __tablename__ = "messages"
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     sender = Column(String)
     receiver = Column(String)
     content = Column(String)
-    time_label = Column(String) 
+    time_label = Column(String) # This is the column the error was complaining about
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
@@ -38,6 +38,7 @@ class AuthData(BaseModel):
     username: str; password: str
 
 def get_12hr_time():
+    # Returns time in 12-hour format based on server time
     return datetime.now().strftime("%I:%M %p")
 
 def purge_old_messages(db):
@@ -58,8 +59,15 @@ async def register(data: AuthData):
         is_admin = (data.username == "emeritusmustapha")
         user = UserDB(username=data.username, password=hashed, is_admin=is_admin)
         db.add(user)
-        welcome_text = f"Hello {data.username}! 🌟 Welcome to LinkUp. I'm emeritusmustapha, the creator. Chats clear every 3 days."
-        db.add(MessageDB(sender="emeritusmustapha", receiver=data.username, content=welcome_text, time_label=get_12hr_time()))
+        # Add welcome message
+        welcome = MessageDB(
+            sender="emeritusmustapha", 
+            receiver=data.username, 
+            content=f"Hello {data.username}! 🌟 Welcome to LinkUp. I'm the creator. Enjoy!",
+            time_label=get_12hr_time(),
+            created_at=datetime.utcnow()
+        )
+        db.add(welcome)
         db.commit()
         return {"message": "Success"}
     finally: db.close()
@@ -123,7 +131,13 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
             data = await websocket.receive_json()
             db = SessionLocal()
             t_label = get_12hr_time()
-            new_m = MessageDB(sender=user_id, receiver=data['to'], content=data['content'], time_label=t_label)
+            new_m = MessageDB(
+                sender=user_id, 
+                receiver=data['to'], 
+                content=data['content'], 
+                time_label=t_label,
+                created_at=datetime.utcnow()
+            )
             db.add(new_m); db.commit(); db.close()
             await manager.send({"from": user_id, "content": data['content'], "time": t_label}, data['to'])
     except WebSocketDisconnect: manager.disconnect(user_id)
