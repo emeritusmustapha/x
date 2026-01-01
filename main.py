@@ -28,7 +28,6 @@ class MessageDB(Base):
     sender = Column(String)
     receiver = Column(String)
     content = Column(String)
-    # Store string time for easy UI display and DateTime for deletion logic
     time_label = Column(String) 
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -39,7 +38,6 @@ class AuthData(BaseModel):
     username: str; password: str
 
 def get_12hr_time():
-    # Returns time in 02:30 PM format
     return datetime.now().strftime("%I:%M %p")
 
 def purge_old_messages(db):
@@ -53,51 +51,59 @@ async def serve_ui(): return FileResponse("index.html")
 @app.post("/register")
 async def register(data: AuthData):
     db = SessionLocal()
-    hashed = hashlib.sha256(data.password.encode()).hexdigest()
-    if db.query(UserDB).filter(UserDB.username == data.username).first():
-        db.close(); raise HTTPException(status_code=400, detail="User exists")
-    is_admin = (data.username == "emeritusmustapha")
-    user = UserDB(username=data.username, password=hashed, is_admin=is_admin)
-    db.add(user)
-    
-    welcome_text = f"Hello {data.username}! 🌟 Welcome to LinkUp. I'm emeritusmustapha, the creator. Chats clear every 3 days."
-    db.add(MessageDB(sender="emeritusmustapha", receiver=data.username, content=welcome_text, time_label=get_12hr_time()))
-    
-    db.commit(); db.close(); return {"message": "Success"}
+    try:
+        hashed = hashlib.sha256(data.password.encode()).hexdigest()
+        if db.query(UserDB).filter(UserDB.username == data.username).first():
+            raise HTTPException(status_code=400, detail="User exists")
+        is_admin = (data.username == "emeritusmustapha")
+        user = UserDB(username=data.username, password=hashed, is_admin=is_admin)
+        db.add(user)
+        welcome_text = f"Hello {data.username}! 🌟 Welcome to LinkUp. I'm emeritusmustapha, the creator. Chats clear every 3 days."
+        db.add(MessageDB(sender="emeritusmustapha", receiver=data.username, content=welcome_text, time_label=get_12hr_time()))
+        db.commit()
+        return {"message": "Success"}
+    finally: db.close()
 
 @app.post("/login")
 async def login(data: AuthData):
     db = SessionLocal()
-    hashed = hashlib.sha256(data.password.encode()).hexdigest()
-    user = db.query(UserDB).filter(UserDB.username == data.username, UserDB.password == hashed).first()
-    if not user: db.close(); raise HTTPException(status_code=401, detail="Invalid login")
-    res = {"username": user.username, "is_admin": user.is_admin}
-    db.close(); return res
+    try:
+        hashed = hashlib.sha256(data.password.encode()).hexdigest()
+        user = db.query(UserDB).filter(UserDB.username == data.username, UserDB.password == hashed).first()
+        if not user: raise HTTPException(status_code=401, detail="Invalid login")
+        return {"username": user.username, "is_admin": user.is_admin}
+    finally: db.close()
 
 @app.get("/users")
 async def get_users():
-    db = SessionLocal(); users = db.query(UserDB).all(); db.close(); return users
+    db = SessionLocal()
+    try: return db.query(UserDB).all()
+    finally: db.close()
 
 @app.get("/messages/{u1}/{u2}")
 async def get_history(u1: str, u2: str):
     db = SessionLocal()
-    purge_old_messages(db) 
-    msgs = db.query(MessageDB).filter(or_(and_(MessageDB.sender==u1, MessageDB.receiver==u2), and_(MessageDB.sender==u2, MessageDB.receiver==u1))).order_by(MessageDB.created_at).all()
-    db.close(); return msgs
+    try:
+        purge_old_messages(db) 
+        return db.query(MessageDB).filter(or_(and_(MessageDB.sender==u1, MessageDB.receiver==u2), and_(MessageDB.sender==u2, MessageDB.receiver==u1))).order_by(MessageDB.created_at).all()
+    finally: db.close()
 
 @app.get("/stats")
 async def get_stats():
     db = SessionLocal()
-    res = {"users": db.query(UserDB).count(), "messages": db.query(MessageDB).count()}
-    db.close(); return res
+    try: return {"users": db.query(UserDB).count(), "messages": db.query(MessageDB).count()}
+    finally: db.close()
 
 @app.delete("/admin/delete_user/{target}")
 async def delete_user(target: str, admin: str):
     if admin != "emeritusmustapha": raise HTTPException(status_code=403)
     db = SessionLocal()
-    db.query(UserDB).filter(UserDB.username == target).delete()
-    db.query(MessageDB).filter(or_(MessageDB.sender==target, MessageDB.receiver==target)).delete()
-    db.commit(); db.close(); return {"status": "deleted"}
+    try:
+        db.query(UserDB).filter(UserDB.username == target).delete()
+        db.query(MessageDB).filter(or_(MessageDB.sender==target, MessageDB.receiver==target)).delete()
+        db.commit()
+        return {"status": "deleted"}
+    finally: db.close()
 
 class ConnectionManager:
     def __init__(self): self.active = {}
@@ -112,14 +118,12 @@ manager = ConnectionManager()
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     await manager.connect(websocket, user_id)
-    db = SessionLocal()
     try:
         while True:
             data = await websocket.receive_json()
+            db = SessionLocal()
             t_label = get_12hr_time()
             new_m = MessageDB(sender=user_id, receiver=data['to'], content=data['content'], time_label=t_label)
-            db.add(new_m); db.commit()
-            # Send the time label back to the receiver so they see the 12hr time
+            db.add(new_m); db.commit(); db.close()
             await manager.send({"from": user_id, "content": data['content'], "time": t_label}, data['to'])
-    except: manager.disconnect(user_id)
-    finally: db.close()
+    except WebSocketDisconnect: manager.disconnect(user_id)
