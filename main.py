@@ -28,6 +28,8 @@ class MessageDB(Base):
     sender = Column(String)
     receiver = Column(String)
     content = Column(String)
+    # Store string time for easy UI display and DateTime for deletion logic
+    time_label = Column(String) 
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
@@ -35,6 +37,10 @@ app = FastAPI()
 
 class AuthData(BaseModel):
     username: str; password: str
+
+def get_12hr_time():
+    # Returns time in 02:30 PM format
+    return datetime.now().strftime("%I:%M %p")
 
 def purge_old_messages(db):
     cutoff = datetime.utcnow() - timedelta(days=3)
@@ -53,8 +59,10 @@ async def register(data: AuthData):
     is_admin = (data.username == "emeritusmustapha")
     user = UserDB(username=data.username, password=hashed, is_admin=is_admin)
     db.add(user)
-    welcome_text = f"Hello {data.username}! 🌟 Welcome to LinkUp. I'm emeritusmustapha, the creator. Chats clear every 3 days. Enjoy!"
-    db.add(MessageDB(sender="emeritusmustapha", receiver=data.username, content=welcome_text))
+    
+    welcome_text = f"Hello {data.username}! 🌟 Welcome to LinkUp. I'm emeritusmustapha, the creator. Chats clear every 3 days."
+    db.add(MessageDB(sender="emeritusmustapha", receiver=data.username, content=welcome_text, time_label=get_12hr_time()))
+    
     db.commit(); db.close(); return {"message": "Success"}
 
 @app.post("/login")
@@ -108,8 +116,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     try:
         while True:
             data = await websocket.receive_json()
-            new_m = MessageDB(sender=user_id, receiver=data['to'], content=data['content'])
+            t_label = get_12hr_time()
+            new_m = MessageDB(sender=user_id, receiver=data['to'], content=data['content'], time_label=t_label)
             db.add(new_m); db.commit()
-            await manager.send({"from": user_id, "content": data['content']}, data['to'])
+            # Send the time label back to the receiver so they see the 12hr time
+            await manager.send({"from": user_id, "content": data['content'], "time": t_label}, data['to'])
     except: manager.disconnect(user_id)
     finally: db.close()
