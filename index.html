@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>LinkUp | Pro</title>
+    <title>LinkUp | Ultra Fast</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -17,38 +17,38 @@
             #chat-window { display: none; width: 100%; }
             #chat-window.mobile-show { display: flex !important; position: absolute; inset: 0; z-index: 40; }
         }
-        .pulse { animation: shadow-pulse 2s infinite; }
-        @keyframes shadow-pulse { 0% { box-shadow: 0 0 0 0px rgba(16, 185, 129, 0.4); } 100% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } }
+        .pulse-badge { animation: badge-pulse 2s infinite; }
+        @keyframes badge-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-slate-950">
 
-    <div id="view-auth" class="h-full w-full flex items-center justify-center p-6 bg-emerald-800 text-white">
+    <div id="view-auth" class="h-full w-full flex items-center justify-center p-6 bg-emerald-800">
         <div class="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl">
-            <h1 class="text-4xl font-black text-center mb-6 text-emerald-900 dark:text-white">LinkUp</h1>
+            <h1 class="text-3xl font-black text-center mb-6 dark:text-white">LinkUp</h1>
             <input id="auth-username" type="text" placeholder="Username" class="w-full p-4 mb-4 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white outline-none">
             <input id="auth-password" type="password" placeholder="Password" class="w-full p-4 mb-6 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white outline-none">
-            <button onclick="handleAuth('login')" class="w-full bg-emerald-600 py-4 rounded-xl font-black mb-3">LOGIN</button>
-            <button onclick="handleAuth('register')" class="w-full text-emerald-600 font-bold">New Account</button>
+            <button onclick="handleAuth('login')" class="w-full bg-emerald-600 text-white py-4 rounded-xl font-black mb-3">LOGIN</button>
+            <button onclick="handleAuth('register')" class="w-full text-emerald-600 font-bold">Create Account</button>
         </div>
     </div>
 
     <div id="view-app" class="h-full w-full flex flex-col hide">
-        <header class="h-16 bg-emerald-900 text-white flex items-center justify-between px-4 z-20 shadow-md">
+        <header class="h-16 bg-emerald-900 text-white flex items-center justify-between px-4 z-20">
             <div class="flex items-center gap-3">
-                <img id="my-avatar" class="w-10 h-10 rounded-full border-2 border-emerald-400 object-cover">
+                <img id="my-avatar" class="w-10 h-10 rounded-full border-2 border-emerald-400 object-cover shadow-sm">
                 <span class="font-bold">LinkUp</span>
             </div>
             <div class="flex items-center gap-4">
-                <button id="btn-admin" onclick="showAdmin()" class="hide"><i data-lucide="shield-check"></i></button>
-                <button onclick="logout()"><i data-lucide="log-out"></i></button>
+                <button id="btn-admin" onclick="showAdmin()" class="hide p-2"><i data-lucide="shield-check"></i></button>
+                <button onclick="logout()" class="p-2"><i data-lucide="log-out"></i></button>
             </div>
         </header>
 
         <div class="flex-1 flex overflow-hidden relative">
             <div id="sidebar" class="w-full md:w-80 bg-white dark:bg-slate-950 flex flex-col border-r dark:border-slate-800">
                 <div class="p-3">
-                    <input type="text" id="user-search" oninput="filterUsers()" placeholder="Search people..." class="w-full p-3 rounded-xl bg-gray-100 dark:bg-slate-900 dark:text-white outline-none">
+                    <input type="text" id="user-search" oninput="filterUsers()" placeholder="Search people..." class="w-full p-3 rounded-xl bg-gray-100 dark:bg-slate-900 dark:text-white outline-none text-sm">
                 </div>
                 <div id="chat-list" class="flex-1 overflow-y-auto"></div>
             </div>
@@ -70,19 +70,19 @@
 
     <div id="view-admin" class="fixed inset-0 z-[60] bg-white dark:bg-slate-950 hide flex flex-col">
         <header class="h-16 bg-slate-900 text-white flex items-center justify-between px-6 font-bold">
-            <span>ADMIN DASHBOARD</span>
+            <span>ADMIN CORE</span>
             <button onclick="document.getElementById('view-admin').classList.add('hide')"><i data-lucide="x"></i></button>
         </header>
-        <div class="p-6 flex-1 overflow-y-auto">
-            <div class="grid grid-cols-2 gap-4 mb-8">
-                <div class="bg-emerald-100 p-6 rounded-3xl text-center"><h3 id="stat-users" class="text-3xl font-black">0</h3><p class="text-xs font-bold text-emerald-600">USERS</p></div>
-                <div class="bg-blue-100 p-6 rounded-3xl text-center"><h3 id="stat-msgs" class="text-3xl font-black">0</h3><p class="text-xs font-bold text-blue-600">MSGS</p></div>
+        <div class="p-6 overflow-y-auto">
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-emerald-100 p-4 rounded-xl text-center"><h3 id="stat-users" class="text-2xl font-bold">0</h3><p class="text-xs">USERS</p></div>
+                <div class="bg-blue-100 p-4 rounded-xl text-center"><h3 id="stat-msgs" class="text-2xl font-bold">0</h3><p class="text-xs">MESSAGES</p></div>
             </div>
-            <div id="admin-user-list" class="bg-gray-50 dark:bg-slate-900 rounded-2xl border dark:border-slate-800"></div>
+            <div id="admin-user-list" class="bg-gray-50 dark:bg-slate-900 rounded-xl"></div>
         </div>
     </div>
 
-    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-3 rounded-full text-xs hide z-[100]"></div>
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-2 rounded-full text-xs hide z-[100]"></div>
 
     <script>
         let state = { user: null, target: null, ws: null, allUsers: [], unreads: {} };
@@ -103,7 +103,7 @@
             const d = await res.json();
             if(res.ok) {
                 if(t === 'login') { state.user = d; localStorage.setItem('linkup_user', JSON.stringify(d)); enterApp(); }
-                else showToast("✅ Account Ready! Sign in.");
+                else showToast("Registered! Sign in now.");
             } else showToast(d.detail);
         }
 
@@ -122,16 +122,23 @@
             state.ws = new WebSocket(`${p}//${location.host}/ws/${state.user.username}`);
             state.ws.onmessage = (e) => {
                 const d = JSON.parse(e.data);
-                // IF CHAT IS OPEN
                 if(state.target === d.from) {
                     addMsg(d.from, d.content, false, d.time);
                 } else {
-                    // IF CHAT IS CLOSED: ADD BADGE + REFRESH SIDEBAR
                     state.unreads[d.from] = (state.unreads[d.from] || 0) + 1;
-                    showToast(`💬 New message from ${d.from}`);
+                    
+                    // LEVEL UP: Move user to top of list
+                    const idx = state.allUsers.findIndex(u => u.username === d.from);
+                    if(idx > -1) {
+                        const user = state.allUsers.splice(idx, 1)[0];
+                        state.allUsers.unshift(user);
+                    }
+                    
                     renderUserList(state.allUsers);
+                    showToast(`💬 ${d.from}: New message`);
                 }
             };
+            state.ws.onclose = () => setTimeout(initWS, 3000);
         }
 
         async function loadUsers() {
@@ -151,26 +158,24 @@
                 if(u.username === state.user.username) return '';
                 const count = state.unreads[u.username] || 0;
                 return `
-                <div onclick="openChat('${u.username}')" class="p-4 flex items-center justify-between border-b dark:border-slate-800 hover:bg-gray-50 active:bg-gray-200 cursor-pointer">
+                <div onclick="openChat('${u.username}')" class="p-4 flex items-center justify-between border-b dark:border-slate-800 hover:bg-gray-50 cursor-pointer">
                     <div class="flex items-center gap-3">
-                        <img src="${getAvatar(u.username)}" class="w-12 h-12 rounded-full border dark:border-slate-700">
+                        <img src="${getAvatar(u.username)}" class="w-12 h-12 rounded-full border shadow-sm">
                         <b class="dark:text-white">${u.username}</b>
                     </div>
-                    ${count > 0 ? `<span class="bg-emerald-500 text-white text-[11px] font-black px-2.5 py-1 rounded-full pulse">${count}</span>` : ''}
+                    ${count > 0 ? `<span class="bg-emerald-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full pulse-badge">${count}</span>` : ''}
                 </div>`;
             }).join('');
         }
 
         async function openChat(u) {
             state.target = u;
-            state.unreads[u] = 0; // Clear badge when chat opens
+            state.unreads[u] = 0;
             renderUserList(state.allUsers);
-            
             document.getElementById('sidebar').classList.add('mobile-hide');
             document.getElementById('chat-window').classList.add('mobile-show');
             document.getElementById('chat-target-name').innerText = u;
             document.getElementById('chat-target-avatar').src = getAvatar(u);
-            
             const res = await fetch(`/messages/${state.user.username}/${u}`);
             const msgs = await res.json();
             const container = document.getElementById('message-container');
