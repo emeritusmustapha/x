@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>LinkUp | Connected</title>
+    <title>LinkUp | Instant</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -12,28 +12,29 @@
         .whatsapp-bg { background-color: #efeae2; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-blend-mode: overlay; }
         .dark .whatsapp-bg { background-color: #0b141a; background-blend-mode: darken; }
         .hide { display: none !important; }
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        @media (max-width: 768px) {
+            #sidebar.mobile-hide { display: none; }
+            #chat-window { display: none; width: 100%; }
+            #chat-window.mobile-show { display: flex !important; position: absolute; inset: 0; z-index: 40; }
+        }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-slate-950 transition-colors duration-300">
+<body class="bg-gray-100 dark:bg-slate-950">
 
-    <div id="view-auth" class="h-full w-full flex items-center justify-center p-6 bg-emerald-700">
+    <div id="view-auth" class="h-full w-full flex items-center justify-center p-6 bg-emerald-800">
         <div class="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8">
-            <h1 class="text-3xl font-black text-center dark:text-white mb-6">LinkUp</h1>
-            <div class="space-y-4">
-                <input id="auth-username" type="text" placeholder="Username" class="w-full p-4 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white border-none outline-none">
-                <input id="auth-password" type="password" placeholder="Password" class="w-full p-4 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white border-none outline-none">
-                <button onclick="handleAuth('login')" class="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg">Sign In</button>
-                <button onclick="handleAuth('register')" class="w-full border-2 border-emerald-600 text-emerald-600 py-4 rounded-xl font-bold">Create Account</button>
-            </div>
+            <h1 class="text-3xl font-black text-center mb-6 dark:text-white">LinkUp</h1>
+            <input id="auth-username" type="text" placeholder="Username" class="w-full p-4 mb-4 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white border-none outline-none">
+            <input id="auth-password" type="password" placeholder="Password" class="w-full p-4 mb-6 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white border-none outline-none">
+            <button onclick="handleAuth('login')" class="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold mb-3">Sign In</button>
+            <button onclick="handleAuth('register')" class="w-full border-2 border-emerald-600 text-emerald-600 py-4 rounded-xl font-bold">Register</button>
         </div>
     </div>
 
     <div id="view-app" class="h-full w-full flex flex-col hide">
-        <header class="h-16 bg-emerald-800 text-white flex items-center justify-between px-4 flex-shrink-0">
+        <header class="h-16 bg-emerald-900 text-white flex items-center justify-between px-4">
             <div class="flex items-center gap-3">
-                <img id="my-avatar" class="w-10 h-10 rounded-full border-2 border-emerald-400 object-cover" src="">
+                <img id="my-avatar" class="w-10 h-10 rounded-full border-2 border-emerald-400 object-cover">
                 <span class="font-bold">LinkUp</span>
             </div>
             <div class="flex items-center gap-4">
@@ -42,74 +43,66 @@
             </div>
         </header>
 
-        <div class="flex-1 flex overflow-hidden">
+        <div class="flex-1 flex overflow-hidden relative">
             <div id="sidebar" class="w-full md:w-80 bg-white dark:bg-slate-950 flex flex-col border-r dark:border-slate-800">
-                <div id="chat-list" class="flex-1 overflow-y-auto custom-scrollbar"></div>
+                <div class="p-3 bg-gray-50 dark:bg-slate-900">
+                    <input type="text" id="user-search" oninput="filterUsers()" placeholder="Search people..." class="w-full p-2.5 rounded-xl bg-white dark:bg-slate-800 dark:text-white text-sm outline-none border dark:border-slate-700">
+                </div>
+                <div id="chat-list" class="flex-1 overflow-y-auto"></div>
             </div>
             
-            <div id="chat-window" class="hidden md:flex flex-1 flex-col bg-gray-200 dark:bg-slate-900 relative">
-                <div id="chat-header" class="h-16 bg-white dark:bg-slate-800 flex items-center px-4 gap-3 border-b dark:border-slate-700">
-                    <img id="chat-target-avatar" class="w-10 h-10 rounded-full object-cover" src="">
-                    <b id="chat-target-name" class="dark:text-white">Chat Room</b>
+            <div id="chat-window" class="flex-1 flex-col bg-gray-200 dark:bg-slate-900">
+                <div class="h-16 bg-white dark:bg-slate-800 flex items-center px-4 gap-3 border-b dark:border-slate-700">
+                    <button onclick="closeChat()" class="md:hidden p-2 text-emerald-600"><i data-lucide="arrow-left"></i></button>
+                    <img id="chat-target-avatar" class="w-10 h-10 rounded-full object-cover">
+                    <b id="chat-target-name" class="dark:text-white">Chat</b>
                 </div>
-                <div id="message-container" class="flex-1 overflow-y-auto p-4 whatsapp-bg custom-scrollbar flex flex-col gap-2"></div>
+                <div id="message-container" class="flex-1 overflow-y-auto p-4 whatsapp-bg flex flex-col gap-2"></div>
                 <form onsubmit="sendMessage(event)" class="p-3 bg-white dark:bg-slate-800 flex gap-2">
-                    <input id="chat-input" type="text" placeholder="Type a message..." class="flex-1 p-3 bg-gray-100 dark:bg-slate-700 rounded-full outline-none dark:text-white">
-                    <button class="bg-emerald-600 text-white w-12 h-12 rounded-full flex items-center justify-center font-bold">➤</button>
+                    <input id="chat-input" type="text" placeholder="Message..." class="flex-1 p-3 bg-gray-100 dark:bg-slate-700 rounded-full outline-none dark:text-white">
+                    <button class="bg-emerald-600 text-white w-12 h-12 rounded-full font-bold">➤</button>
                 </form>
             </div>
         </div>
     </div>
 
     <div id="view-admin" class="fixed inset-0 z-50 bg-white dark:bg-slate-950 hide flex flex-col">
-        <header class="h-16 bg-slate-900 text-white flex items-center justify-between px-6">
-            <h2 class="font-bold">ADMIN DASHBOARD</h2>
+        <header class="h-16 bg-slate-900 text-white flex items-center justify-between px-6 font-bold">
+            <span>ADMIN CORE</span>
             <button onclick="document.getElementById('view-admin').classList.add('hide')"><i data-lucide="x"></i></button>
         </header>
         <div class="p-6 overflow-y-auto flex-1">
-            <div class="grid grid-cols-2 gap-4 mb-8">
-                <div class="bg-emerald-100 p-6 rounded-2xl text-center"><p class="text-xs font-bold text-emerald-600">USERS</p><h3 id="stat-users" class="text-3xl font-black">0</h3></div>
-                <div class="bg-blue-100 p-6 rounded-2xl text-center"><p class="text-xs font-bold text-blue-600">MESSAGES</p><h3 id="stat-msgs" class="text-3xl font-black">0</h3></div>
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-emerald-100 p-4 rounded-xl text-center"><h3 id="stat-users" class="text-2xl font-bold">0</h3><p class="text-xs">USERS</p></div>
+                <div class="bg-blue-100 p-4 rounded-xl text-center"><h3 id="stat-msgs" class="text-2xl font-bold">0</h3><p class="text-xs">LOGS</p></div>
             </div>
-            <h4 class="font-bold mb-4 dark:text-white">USER MANAGEMENT</h4>
-            <div id="admin-user-list" class="bg-gray-50 dark:bg-slate-900 rounded-2xl border dark:border-slate-800"></div>
+            <div id="admin-user-list" class="bg-gray-50 dark:bg-slate-900 rounded-xl"></div>
         </div>
     </div>
 
-    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full text-sm hide z-[100]"></div>
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-2 rounded-full text-xs hide"></div>
 
     <script>
-        let state = { user: null, target: null, ws: null, users: [] };
-        const ADMIN_USER = "emeritusmustapha";
+        let state = { user: null, target: null, ws: null, allUsers: [] };
+        const ADMIN = "emeritusmustapha";
 
         async function init() {
             lucide.createIcons();
             const saved = localStorage.getItem('linkup_user');
-            if (saved) { state.user = JSON.parse(saved); enterApp(); }
+            if(saved) { state.user = JSON.parse(saved); enterApp(); }
         }
 
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg; t.classList.remove('hide');
-            setTimeout(() => t.classList.add('hide'), 3000);
-        }
+        function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.classList.remove('hide'); setTimeout(()=>t.classList.add('hide'), 3000); }
 
-        async function handleAuth(type) {
+        async function handleAuth(t) {
             const u = document.getElementById('auth-username').value;
             const p = document.getElementById('auth-password').value;
-            if(!u || !p) return showToast("Enter credentials");
-            const res = await fetch(`/${type}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: u, password: p })
-            });
-            const data = await res.json();
+            const res = await fetch(`/${t}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username:u, password:p}) });
+            const d = await res.json();
             if(res.ok) {
-                if(type === 'login') {
-                    state.user = data; localStorage.setItem('linkup_user', JSON.stringify(data));
-                    enterApp();
-                } else showToast("✅ Registered! Now Login.");
-            } else showToast("❌ " + data.detail);
+                if(t === 'login') { state.user = d; localStorage.setItem('linkup_user', JSON.stringify(d)); enterApp(); }
+                else showToast("Registered! Sign in.");
+            } else showToast(d.detail);
         }
 
         function enterApp() {
@@ -120,27 +113,34 @@
             initWS(); loadUsers();
         }
 
-        function getAvatar(u) {
-            return u === ADMIN_USER ? 'https://raw.githubusercontent.com/emeritusmustapha/MY-PROJECTS/main/me.jpeg' : `https://robohash.org/${u}.png?set=set1`;
-        }
+        function getAvatar(u) { return u === ADMIN ? 'https://raw.githubusercontent.com/emeritusmustapha/MY-PROJECTS/main/me.jpeg' : `https://robohash.org/${u}.png?set=set1`; }
 
         function initWS() {
-            const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            state.ws = new WebSocket(`${proto}//${location.host}/ws/${state.user.username}`);
+            const p = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            state.ws = new WebSocket(`${p}//${location.host}/ws/${state.user.username}`);
             state.ws.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-                if(state.target === data.from) addMsg(data.from, data.content, false);
-                else showToast(`💬 From ${data.from}`);
+                const d = JSON.parse(e.data);
+                if(state.target === d.from) addMsg(d.from, d.content, false);
+                else showToast(`New from ${d.from}`);
             };
         }
 
         async function loadUsers() {
             const res = await fetch('/users');
-            state.users = await res.json();
-            const list = document.getElementById('chat-list');
-            list.innerHTML = state.users.map(u => u.username !== state.user.username ? `
-                <div onclick="openChat('${u.username}')" class="p-4 flex items-center gap-4 hover:bg-emerald-50 cursor-pointer border-b dark:border-slate-800">
-                    <img src="${getAvatar(u.username)}" class="w-12 h-12 rounded-full border dark:border-slate-700">
+            state.allUsers = await res.json();
+            renderUserList(state.allUsers);
+        }
+
+        function filterUsers() {
+            const q = document.getElementById('user-search').value.toLowerCase();
+            const filtered = state.allUsers.filter(u => u.username.toLowerCase().includes(q));
+            renderUserList(filtered);
+        }
+
+        function renderUserList(arr) {
+            document.getElementById('chat-list').innerHTML = arr.map(u => u.username !== state.user.username ? `
+                <div onclick="openChat('${u.username}')" class="p-4 flex items-center gap-3 border-b dark:border-slate-800 hover:bg-gray-50 cursor-pointer">
+                    <img src="${getAvatar(u.username)}" class="w-12 h-12 rounded-full border">
                     <b class="dark:text-white">${u.username}</b>
                 </div>
             ` : '').join('');
@@ -148,8 +148,8 @@
 
         async function openChat(u) {
             state.target = u;
-            document.getElementById('chat-window').classList.remove('md:hidden');
-            document.getElementById('chat-window').classList.add('flex');
+            document.getElementById('sidebar').classList.add('mobile-hide');
+            document.getElementById('chat-window').classList.add('mobile-show');
             document.getElementById('chat-target-name').innerText = u;
             document.getElementById('chat-target-avatar').src = getAvatar(u);
             const res = await fetch(`/messages/${state.user.username}/${u}`);
@@ -157,14 +157,21 @@
             const container = document.getElementById('message-container');
             container.innerHTML = '';
             msgs.forEach(m => addMsg(m.sender, m.content, m.sender === state.user.username));
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function closeChat() {
+            document.getElementById('sidebar').classList.remove('mobile-hide');
+            document.getElementById('chat-window').classList.remove('mobile-show');
+            state.target = null;
         }
 
         function addMsg(s, c, isMe) {
             const container = document.getElementById('message-container');
-            const div = document.createElement('div');
-            div.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
-            div.innerHTML = `<div class="p-3 rounded-xl max-w-[80%] ${isMe ? 'bg-emerald-100 text-emerald-900' : 'bg-white text-gray-800'} shadow-sm text-sm">${c}</div>`;
-            container.appendChild(div);
+            const d = document.createElement('div');
+            d.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
+            d.innerHTML = `<div class="p-3 rounded-2xl max-w-[80%] shadow-sm text-sm ${isMe ? 'bg-emerald-600 text-white' : 'bg-white text-gray-800'}">${c}</div>`;
+            container.appendChild(d);
             container.scrollTop = container.scrollHeight;
         }
 
@@ -178,27 +185,19 @@
         }
 
         async function showAdmin() {
-            const res = await fetch('/stats');
-            const data = await res.json();
-            document.getElementById('stat-users').innerText = data.users;
-            document.getElementById('stat-msgs').innerText = data.messages;
-            const uRes = await fetch('/users');
-            const all = await uRes.json();
-            document.getElementById('admin-user-list').innerHTML = all.map(u => `
+            const r = await fetch('/stats'); const d = await r.json();
+            document.getElementById('stat-users').innerText = d.users;
+            document.getElementById('stat-msgs').innerText = d.messages;
+            document.getElementById('admin-user-list').innerHTML = state.allUsers.map(u => `
                 <div class="flex justify-between p-4 border-b dark:border-slate-800 items-center">
                     <span class="dark:text-white font-bold">${u.username}</span>
-                    ${u.username !== ADMIN_USER ? `<button onclick="deleteUser('${u.username}')" class="text-red-500 text-xs font-black">DELETE</button>` : '<span class="text-emerald-500 text-xs">OWNER</span>'}
+                    ${u.username !== ADMIN ? `<button onclick="deleteUser('${u.username}')" class="text-red-500 font-black">BAN</button>` : '👑'}
                 </div>
             `).join('');
             document.getElementById('view-admin').classList.remove('hide');
         }
 
-        async function deleteUser(u) {
-            if(!confirm(`Ban ${u}?`)) return;
-            await fetch(`/admin/delete_user/${u}?admin=${state.user.username}`, { method: 'DELETE' });
-            showAdmin();
-        }
-
+        async function deleteUser(u) { if(confirm(`Ban ${u}?`)) { await fetch(`/admin/delete_user/${u}?admin=${state.user.username}`, {method:'DELETE'}); loadUsers(); }}
         function logout() { localStorage.removeItem('linkup_user'); location.reload(); }
         init();
     </script>
