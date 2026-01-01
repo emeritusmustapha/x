@@ -36,7 +36,6 @@ app = FastAPI()
 class AuthData(BaseModel):
     username: str; password: str
 
-# --- Auto-Delete Logic (3 Days) ---
 def purge_old_messages(db):
     cutoff = datetime.utcnow() - timedelta(days=3)
     db.query(MessageDB).filter(MessageDB.created_at < cutoff).delete()
@@ -51,20 +50,11 @@ async def register(data: AuthData):
     hashed = hashlib.sha256(data.password.encode()).hexdigest()
     if db.query(UserDB).filter(UserDB.username == data.username).first():
         db.close(); raise HTTPException(status_code=400, detail="User exists")
-    
     is_admin = (data.username == "emeritusmustapha")
     user = UserDB(username=data.username, password=hashed, is_admin=is_admin)
     db.add(user)
-    
-    # --- SIMPLE & PLEASANT WELCOME MESSAGE ---
-    welcome_text = (
-        f"Hello {data.username}! 🌟 Welcome to LinkUp. "
-        "I'm emeritusmustapha, the creator of this app. I'm glad you're here! "
-        "Feel free to explore and connect. Just a heads-up: to keep things "
-        "private and fresh, our chats automatically clear every 3 days. Enjoy!"
-    )
+    welcome_text = f"Hello {data.username}! 🌟 Welcome to LinkUp. I'm emeritusmustapha, the creator. Chats clear every 3 days. Enjoy!"
     db.add(MessageDB(sender="emeritusmustapha", receiver=data.username, content=welcome_text))
-    
     db.commit(); db.close(); return {"message": "Success"}
 
 @app.post("/login")
