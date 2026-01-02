@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>LinkUp | Ultra Fast</title>
+    <title>LinkUp | Official</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -17,8 +17,8 @@
             #chat-window { display: none; width: 100%; }
             #chat-window.mobile-show { display: flex !important; position: absolute; inset: 0; z-index: 40; }
         }
-        .pulse-badge { animation: badge-pulse 2s infinite; }
-        @keyframes badge-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .pulse { animation: p-anim 2s infinite; }
+        @keyframes p-anim { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-slate-950">
@@ -28,61 +28,42 @@
             <h1 class="text-3xl font-black text-center mb-6 dark:text-white">LinkUp</h1>
             <input id="auth-username" type="text" placeholder="Username" class="w-full p-4 mb-4 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white outline-none">
             <input id="auth-password" type="password" placeholder="Password" class="w-full p-4 mb-6 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white outline-none">
-            <button onclick="handleAuth('login')" class="w-full bg-emerald-600 text-white py-4 rounded-xl font-black mb-3">LOGIN</button>
-            <button onclick="handleAuth('register')" class="w-full text-emerald-600 font-bold">Create Account</button>
+            <button onclick="handleAuth('login')" class="w-full bg-emerald-600 text-white py-4 rounded-xl font-black mb-3 active:scale-95 transition-transform">LOGIN</button>
+            <button onclick="handleAuth('register')" class="w-full text-emerald-600 font-bold">New Account</button>
         </div>
     </div>
 
     <div id="view-app" class="h-full w-full flex flex-col hide">
-        <header class="h-16 bg-emerald-900 text-white flex items-center justify-between px-4 z-20">
+        <header class="h-16 bg-emerald-900 text-white flex items-center justify-between px-4 z-20 shadow-md">
             <div class="flex items-center gap-3">
-                <img id="my-avatar" class="w-10 h-10 rounded-full border-2 border-emerald-400 object-cover shadow-sm">
+                <img id="my-avatar" class="w-10 h-10 rounded-full border-2 border-emerald-400 object-cover bg-emerald-700">
                 <span class="font-bold">LinkUp</span>
             </div>
             <div class="flex items-center gap-4">
-                <button id="btn-admin" onclick="showAdmin()" class="hide p-2"><i data-lucide="shield-check"></i></button>
-                <button onclick="logout()" class="p-2"><i data-lucide="log-out"></i></button>
+                <button onclick="logout()"><i data-lucide="log-out"></i></button>
             </div>
         </header>
 
         <div class="flex-1 flex overflow-hidden relative">
             <div id="sidebar" class="w-full md:w-80 bg-white dark:bg-slate-950 flex flex-col border-r dark:border-slate-800">
-                <div class="p-3">
-                    <input type="text" id="user-search" oninput="filterUsers()" placeholder="Search people..." class="w-full p-3 rounded-xl bg-gray-100 dark:bg-slate-900 dark:text-white outline-none text-sm">
-                </div>
+                <div class="p-3"><input type="text" id="user-search" oninput="filterUsers()" placeholder="Search..." class="w-full p-3 rounded-xl bg-gray-100 dark:bg-slate-900 dark:text-white outline-none text-sm"></div>
                 <div id="chat-list" class="flex-1 overflow-y-auto"></div>
             </div>
             
             <div id="chat-window" class="flex-1 flex-col bg-gray-200 dark:bg-slate-900">
                 <div class="h-16 bg-white dark:bg-slate-800 flex items-center px-4 gap-3 border-b dark:border-slate-700">
-                    <button onclick="closeChat()" class="md:hidden p-2 text-emerald-600"><i data-lucide="arrow-left"></i></button>
+                    <button onclick="history.back()" class="md:hidden p-2 text-emerald-600"><i data-lucide="arrow-left"></i></button>
                     <img id="chat-target-avatar" class="w-10 h-10 rounded-full object-cover">
-                    <b id="chat-target-name" class="dark:text-white">Chat</b>
+                    <b id="chat-target-name" class="dark:text-white text-sm">Chat</b>
                 </div>
                 <div id="message-container" class="flex-1 overflow-y-auto p-4 whatsapp-bg flex flex-col gap-2"></div>
-                <form onsubmit="sendMessage(event)" class="p-3 bg-white dark:bg-slate-800 flex gap-2">
-                    <input id="chat-input" type="text" placeholder="Message..." class="flex-1 p-3 bg-gray-100 dark:bg-slate-700 rounded-full outline-none dark:text-white">
+                <form onsubmit="sendMessage(event)" class="p-3 bg-white dark:bg-slate-800 flex gap-2 border-t">
+                    <input id="chat-input" type="text" placeholder="Message..." class="flex-1 p-3 bg-gray-100 dark:bg-slate-700 rounded-full outline-none dark:text-white text-sm">
                     <button class="bg-emerald-600 text-white w-12 h-12 rounded-full font-bold">➤</button>
                 </form>
             </div>
         </div>
     </div>
-
-    <div id="view-admin" class="fixed inset-0 z-[60] bg-white dark:bg-slate-950 hide flex flex-col">
-        <header class="h-16 bg-slate-900 text-white flex items-center justify-between px-6 font-bold">
-            <span>ADMIN CORE</span>
-            <button onclick="document.getElementById('view-admin').classList.add('hide')"><i data-lucide="x"></i></button>
-        </header>
-        <div class="p-6 overflow-y-auto">
-            <div class="grid grid-cols-2 gap-4 mb-6">
-                <div class="bg-emerald-100 p-4 rounded-xl text-center"><h3 id="stat-users" class="text-2xl font-bold">0</h3><p class="text-xs">USERS</p></div>
-                <div class="bg-blue-100 p-4 rounded-xl text-center"><h3 id="stat-msgs" class="text-2xl font-bold">0</h3><p class="text-xs">MESSAGES</p></div>
-            </div>
-            <div id="admin-user-list" class="bg-gray-50 dark:bg-slate-900 rounded-xl"></div>
-        </div>
-    </div>
-
-    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-black/80 text-white px-6 py-2 rounded-full text-xs hide z-[100]"></div>
 
     <script>
         let state = { user: null, target: null, ws: null, allUsers: [], unreads: {} };
@@ -94,7 +75,8 @@
             if(saved) { state.user = JSON.parse(saved); enterApp(); }
         }
 
-        function showToast(m) { const t = document.getElementById('toast'); t.innerText = m; t.classList.remove('hide'); setTimeout(()=>t.classList.add('hide'), 3000); }
+        // Logic for Android Back Button
+        window.onpopstate = () => { if (state.target) closeChat(); };
 
         async function handleAuth(t) {
             const u = document.getElementById('auth-username').value;
@@ -103,39 +85,37 @@
             const d = await res.json();
             if(res.ok) {
                 if(t === 'login') { state.user = d; localStorage.setItem('linkup_user', JSON.stringify(d)); enterApp(); }
-                else showToast("Registered! Sign in now.");
-            } else showToast(d.detail);
+                else alert("✅ Ready! Please Login.");
+            } else alert(d.detail);
         }
 
         function enterApp() {
             document.getElementById('view-auth').classList.add('hide');
             document.getElementById('view-app').classList.remove('hide');
             document.getElementById('my-avatar').src = getAvatar(state.user.username);
-            if(state.user.is_admin) document.getElementById('btn-admin').classList.remove('hide');
+            
+            if(state.user.username.toLowerCase() !== ADMIN) state.unreads[ADMIN] = 1;
             initWS(); loadUsers();
         }
 
-        function getAvatar(u) { return u === ADMIN ? 'https://raw.githubusercontent.com/emeritusmustapha/MY-PROJECTS/main/me.jpeg' : `https://robohash.org/${u}.png?set=set1`; }
+        // --- USES YOUR UPLOADED me.jpeg ---
+        function getAvatar(u) { 
+            return u.toLowerCase() === ADMIN ? '/me.jpeg' : `https://robohash.org/${u}.png?set=set1`; 
+        }
 
         function initWS() {
             const p = location.protocol === 'https:' ? 'wss:' : 'ws:';
             state.ws = new WebSocket(`${p}//${location.host}/ws/${state.user.username}`);
             state.ws.onmessage = (e) => {
                 const d = JSON.parse(e.data);
-                if(state.target === d.from) {
-                    addMsg(d.from, d.content, false, d.time);
-                } else {
+                if(state.target === d.from) addMsg(d.from, d.content, false, d.time);
+                else { 
                     state.unreads[d.from] = (state.unreads[d.from] || 0) + 1;
                     
-                    // LEVEL UP: Move user to top of list
+                    // Move sender to top
                     const idx = state.allUsers.findIndex(u => u.username === d.from);
-                    if(idx > -1) {
-                        const user = state.allUsers.splice(idx, 1)[0];
-                        state.allUsers.unshift(user);
-                    }
-                    
-                    renderUserList(state.allUsers);
-                    showToast(`💬 ${d.from}: New message`);
+                    if(idx > -1) { const u = state.allUsers.splice(idx,1)[0]; state.allUsers.unshift(u); }
+                    renderUserList(state.allUsers); 
                 }
             };
             state.ws.onclose = () => setTimeout(initWS, 3000);
@@ -144,87 +124,74 @@
         async function loadUsers() {
             const res = await fetch('/users');
             state.allUsers = await res.json();
+            
+            // Keep Admin at top for new users
+            if(state.user.username.toLowerCase() !== ADMIN) {
+                const adminIdx = state.allUsers.findIndex(u => u.username.toLowerCase() === ADMIN);
+                if(adminIdx > -1) { const a = state.allUsers.splice(adminIdx,1)[0]; state.allUsers.unshift(a); }
+            }
             renderUserList(state.allUsers);
-        }
-
-        function filterUsers() {
-            const q = document.getElementById('user-search').value.toLowerCase();
-            const filtered = state.allUsers.filter(u => u.username.toLowerCase().includes(q));
-            renderUserList(filtered);
         }
 
         function renderUserList(arr) {
             document.getElementById('chat-list').innerHTML = arr.map(u => {
                 if(u.username === state.user.username) return '';
-                const count = state.unreads[u.username] || 0;
-                return `
-                <div onclick="openChat('${u.username}')" class="p-4 flex items-center justify-between border-b dark:border-slate-800 hover:bg-gray-50 cursor-pointer">
+                const c = state.unreads[u.username] || 0;
+                return `<div onclick="openChat('${u.username}')" class="p-4 flex items-center justify-between border-b dark:border-slate-800 hover:bg-emerald-50 cursor-pointer">
                     <div class="flex items-center gap-3">
-                        <img src="${getAvatar(u.username)}" class="w-12 h-12 rounded-full border shadow-sm">
-                        <b class="dark:text-white">${u.username}</b>
+                        <img src="${getAvatar(u.username)}" class="w-12 h-12 rounded-full border shadow-sm object-cover">
+                        <div class="flex flex-col"><b class="dark:text-white font-bold text-xs">${u.username}</b>${u.username.toLowerCase() === ADMIN ? '<span class="text-[8px] text-emerald-600 font-black uppercase">Creator</span>' : ''}</div>
                     </div>
-                    ${count > 0 ? `<span class="bg-emerald-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full pulse-badge">${count}</span>` : ''}
+                    ${c > 0 ? `<span class="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full pulse">${c}</span>` : ''}
                 </div>`;
             }).join('');
         }
 
         async function openChat(u) {
-            state.target = u;
-            state.unreads[u] = 0;
-            renderUserList(state.allUsers);
+            state.target = u; state.unreads[u] = 0; renderUserList(state.allUsers);
+            
+            // Activate back button history
+            window.history.pushState({ chat: u }, "");
+
             document.getElementById('sidebar').classList.add('mobile-hide');
             document.getElementById('chat-window').classList.add('mobile-show');
             document.getElementById('chat-target-name').innerText = u;
             document.getElementById('chat-target-avatar').src = getAvatar(u);
             const res = await fetch(`/messages/${state.user.username}/${u}`);
             const msgs = await res.json();
-            const container = document.getElementById('message-container');
-            container.innerHTML = '';
+            const container = document.getElementById('message-container'); container.innerHTML = '';
             msgs.forEach(m => addMsg(m.sender, m.content, m.sender === state.user.username, m.time_label));
             container.scrollTop = container.scrollHeight;
         }
 
-        function closeChat() {
-            document.getElementById('sidebar').classList.remove('mobile-hide');
-            document.getElementById('chat-window').classList.remove('mobile-show');
-            state.target = null;
+        function closeChat() { 
+            document.getElementById('sidebar').classList.remove('mobile-hide'); 
+            document.getElementById('chat-window').classList.remove('mobile-show'); 
+            state.target = null; 
         }
 
         function addMsg(s, c, isMe, time) {
             const container = document.getElementById('message-container');
-            const d = document.createElement('div');
-            d.className = `flex ${isMe ? 'justify-end' : 'justify-start'} mb-1`;
-            d.innerHTML = `<div class="p-3 rounded-2xl max-w-[85%] shadow-sm text-sm ${isMe ? 'bg-emerald-600 text-white' : 'bg-white text-gray-800'}">
-                <div>${c}</div>
-                <div class="text-[9px] mt-1 text-right opacity-60 font-bold">${time || ''}</div>
+            const d = document.createElement('div'); d.className = `flex ${isMe ? 'justify-end' : 'justify-start'} mb-1`;
+            d.innerHTML = `<div class="p-3 rounded-2xl max-w-[85%] shadow-sm text-xs ${isMe ? 'bg-emerald-600 text-white' : 'bg-white text-gray-800'}">
+                <div>${c}</div><div class="text-[8px] mt-1 text-right opacity-60 font-bold">${time || ''}</div>
             </div>`;
-            container.appendChild(d);
-            container.scrollTop = container.scrollHeight;
+            container.appendChild(d); container.scrollTop = container.scrollHeight;
         }
 
         function sendMessage(e) {
-            e.preventDefault();
-            const i = document.getElementById('chat-input');
-            if(!i.value || !state.target) return;
+            e.preventDefault(); const i = document.getElementById('chat-input'); if(!i.value || !state.target) return;
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             state.ws.send(JSON.stringify({ to: state.target, content: i.value }));
-            addMsg(state.user.username, i.value, true, now);
-            i.value = '';
+            addMsg(state.user.username, i.value, true, now); i.value = '';
         }
 
-        async function showAdmin() {
-            const r = await fetch('/stats'); const d = await r.json();
-            document.getElementById('stat-users').innerText = d.users;
-            document.getElementById('stat-msgs').innerText = d.messages;
-            document.getElementById('admin-user-list').innerHTML = state.allUsers.map(u => `
-                <div class="flex justify-between p-4 border-b dark:border-slate-800 items-center">
-                    <span class="dark:text-white font-bold">${u.username}</span>
-                    ${u.username !== ADMIN ? `<button onclick="deleteUser('${u.username}')" class="text-red-500 font-black">BAN</button>` : '👑'}
-                </div>`).join('');
-            document.getElementById('view-admin').classList.remove('hide');
+        function filterUsers() {
+            const q = document.getElementById('user-search').value.toLowerCase();
+            const f = state.allUsers.filter(u => u.username.toLowerCase().includes(q));
+            renderUserList(f);
         }
 
-        async function deleteUser(u) { if(confirm(`Ban ${u}?`)) { await fetch(`/admin/delete_user/${u}?admin=${state.user.username}`, {method:'DELETE'}); loadUsers(); showAdmin(); }}
         function logout() { localStorage.removeItem('linkup_user'); location.reload(); }
         init();
     </script>
