@@ -6,8 +6,11 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, or_, and_
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-DATABASE_URL = "postgresql://neondb_owner:npg_bkvBP32eGqjU@ep-wandering-darkness-a82zt5s2-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+# --- IDENTITY CONFIGURATION ---
+ADMIN_KEY = "7days"
+PUBLIC_CREATOR = "emeritusmustapha" 
 
+DATABASE_URL = "postgresql://neondb_owner:npg_bkvBP32eGqjU@ep-wandering-darkness-a82zt5s2-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
@@ -25,7 +28,7 @@ class MessageDB(Base):
     __tablename__ = "messages"
     id = Column(Integer, primary_key=True)
     sender = Column(String)
-    receiver = Column(String) # Can be a username or "Global"
+    receiver = Column(String) 
     content = Column(String)
     time_label = Column(String) 
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -37,8 +40,14 @@ class AuthData(BaseModel):
     username: str; password: str
 
 def get_now_time():
-    local_time = datetime.utcnow() + timedelta(hours=1)
-    return local_time.strftime("%I:%M %p")
+    # Adjusted for Nigeria Time (UTC+1)
+    return (datetime.utcnow() + timedelta(hours=1)).strftime("%I:%M %p")
+
+def purge_old_messages(db):
+    """Auto-delete messages older than 3 days."""
+    cutoff = datetime.utcnow() - timedelta(days=3)
+    db.query(MessageDB).filter(MessageDB.created_at < cutoff).delete()
+    db.commit()
 
 @app.get("/")
 async def serve_ui(): return FileResponse("index.html")
@@ -55,11 +64,15 @@ async def register(data: AuthData):
         hashed = hashlib.sha256(data.password.encode()).hexdigest()
         if db.query(UserDB).filter(UserDB.username.ilike(data.username)).first():
             raise HTTPException(status_code=400, detail="User exists")
-        is_admin = (data.username.lower() == "emeritusmustapha")
+        
+        is_admin = (data.username.lower() == ADMIN_KEY.lower())
         user = UserDB(username=data.username, password=hashed, is_admin=is_admin)
         db.add(user)
+        
+        # 'emeritusmustapha' sends the welcoming message
         welcome = f"Hello {data.username}! 🌟 I'm emeritusmustapha, the creator. Welcome to LinkUp!"
-        db.add(MessageDB(sender="emeritusmustapha", receiver=data.username, content=welcome, time_label=get_now_time()))
+        db.add(MessageDB(sender=PUBLIC_CREATOR, receiver=data.username, content=welcome, time_label=get_now_time()))
+        
         db.commit()
         return {"message": "Success"}
     finally: db.close()
@@ -84,10 +97,25 @@ async def get_users():
 async def get_history(u1: str, u2: str):
     db = SessionLocal()
     try:
-        # If u2 is "Global", we only fetch global messages
+        purge_old_messages(db) 
         if u2 == "Global":
             return db.query(MessageDB).filter(MessageDB.receiver == "Global").order_by(MessageDB.created_at).all()
         return db.query(MessageDB).filter(or_(and_(MessageDB.sender==u1, MessageDB.receiver==u2), and_(MessageDB.sender==u2, MessageDB.receiver==u1))).order_by(MessageDB.created_at).all()
+    finally: db.close()
+
+@app.get("/stats")
+async def get_stats():
+    db = SessionLocal()
+    try: return {"users": db.query(UserDB).count(), "messages": db.query(MessageDB).count()}
+    finally: db.close()
+
+@app.post("/admin/purge")
+async def manual_purge(admin: str):
+    if admin.lower() != ADMIN_KEY.lower(): raise HTTPException(status_code=403)
+    db = SessionLocal()
+    try:
+        purge_old_messages(db)
+        return {"status": "Database cleaned"}
     finally: db.close()
 
 class ConnectionManager:
@@ -112,10 +140,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
             t_label = get_now_time()
             new_m = MessageDB(sender=user_id, receiver=data['to'], content=data['content'], time_label=t_label)
             db.add(new_m); db.commit(); db.close()
-            
             payload = {"from": user_id, "to": data['to'], "content": data['content'], "time": t_label}
-            if data['to'] == "Global":
-                await manager.broadcast(payload)
-            else:
-                await manager.send(payload, data['to'])
+            if data['to'] == "Global": await manager.broadcast(payload)
+            else: await manager.send(payload, data['to'])
     except WebSocketDisconnect: manager.disconnect(user_id)
