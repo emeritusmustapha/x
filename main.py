@@ -70,7 +70,7 @@ async def register(data: AuthData):
         db.add(user)
         
         # 'emeritusmustapha' sends the welcoming message
-        welcome = f"Hello {data.username}! 🌟 I'm emeritusmustapha, the creator. Welcome to LinkUp!"
+        welcome = f"Hi {username}, welcome to LinkUp! I'm Emeritus Mustapha.  I've set up this space for seamless communication. If you have any feedback or questions, I'm just a message away. Enjoy the app!"
         db.add(MessageDB(sender=PUBLIC_CREATOR, receiver=data.username, content=welcome, time_label=get_now_time()))
         
         db.commit()
