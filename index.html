@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>LinkUp | Pro</title>
+    <title>LinkUp</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -23,17 +23,17 @@
 <body class="bg-gray-100 dark:bg-slate-950">
 
     <div id="view-auth" class="h-full w-full flex items-center justify-center p-6 bg-emerald-800">
-        <div class="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl text-center">
-            <h1 class="text-3xl font-black mb-6 dark:text-white">LinkUp</h1>
-            <input id="auth-username" type="text" placeholder="Username" class="w-full p-4 mb-4 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white outline-none border-2 border-transparent focus:border-emerald-500">
-            <input id="auth-password" type="password" placeholder="Password" class="w-full p-4 mb-6 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white outline-none border-2 border-transparent focus:border-emerald-500">
-            <button onclick="handleAuth('login')" class="w-full bg-emerald-600 text-white py-4 rounded-xl font-black shadow-lg active:scale-95 transition-transform mb-3">LOGIN</button>
+        <div class="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl">
+            <h1 class="text-3xl font-black text-center mb-6 dark:text-white">LinkUp</h1>
+            <input id="auth-username" type="text" placeholder="Username" class="w-full p-4 mb-4 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white outline-none">
+            <input id="auth-password" type="password" placeholder="Password" class="w-full p-4 mb-6 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white outline-none">
+            <button onclick="handleAuth('login')" class="w-full bg-emerald-600 text-white py-4 rounded-xl font-black mb-3 active:scale-95">LOGIN</button>
             <button onclick="handleAuth('register')" class="w-full text-emerald-600 font-bold">New Account</button>
         </div>
     </div>
 
     <div id="view-app" class="h-full w-full flex flex-col hide">
-        <header class="h-16 bg-emerald-900 text-white flex items-center justify-between px-4 z-20 shadow-md">
+        <header class="h-16 bg-emerald-900 text-white flex items-center justify-between px-4 z-20">
             <div class="flex items-center gap-3">
                 <img id="my-avatar" class="w-10 h-10 rounded-full border-2 border-emerald-400 object-cover bg-emerald-700">
                 <span class="font-bold">LinkUp</span>
@@ -48,10 +48,10 @@
             <div id="sidebar" class="w-full md:w-80 bg-white dark:bg-slate-950 flex flex-col border-r dark:border-slate-800">
                 <div class="p-3"><input type="text" id="user-search" oninput="filterUsers()" placeholder="Search..." class="w-full p-3 rounded-xl bg-gray-100 dark:bg-slate-900 dark:text-white outline-none text-sm"></div>
                 
-                <div id="global-entry" onclick="openChat('Global')" class="p-4 flex items-center justify-between border-b bg-emerald-50 dark:bg-emerald-900/10 cursor-pointer">
+                <div onclick="openChat('Global')" class="p-4 flex items-center justify-between border-b bg-emerald-50 dark:bg-emerald-900/10 cursor-pointer">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center text-white"><i data-lucide="globe"></i></div>
-                        <div class="flex flex-col"><b class="dark:text-white text-sm">LinkUp Global 🌎</b><span class="text-[10px] text-emerald-600">Public Group</span></div>
+                        <div class="flex flex-col"><b class="dark:text-white text-sm">LinkUp Global 🌎</b><span class="text-[10px] text-emerald-600 font-bold">Public Group</span></div>
                     </div>
                     <span id="unread-Global" class="hide bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full pulse">0</span>
                 </div>
@@ -97,11 +97,12 @@
         async function handleAuth(t) {
             const u = document.getElementById('auth-username').value;
             const p = document.getElementById('auth-password').value;
+            if(!u || !p) return alert("Enter credentials");
             const res = await fetch(`/${t}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username:u, password:p}) });
             const d = await res.json();
             if(res.ok) {
                 if(t === 'login') { state.user = d; localStorage.setItem('linkup_user', JSON.stringify(d)); enterApp(); }
-                else alert("✅ Ready! Please Login.");
+                else alert("✅ Account Created! Sign in now.");
             } else alert(d.detail);
         }
 
@@ -217,8 +218,7 @@
                     </div>
                 </div>
                 <div class="bg-red-50 p-6 rounded-3xl border border-red-100">
-                    <h4 class="text-xs font-black text-red-600 uppercase mb-2">Auto-Delete active (3 Days)</h4>
-                    <button onclick="triggerPurge()" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold text-xs active:scale-95 transition-transform">PURGE OLD DATA NOW</button>
+                    <button onclick="triggerPurge()" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold text-xs">PURGE OLD DATA NOW</button>
                 </div>
             `;
             document.getElementById('view-admin').classList.remove('hide');
@@ -228,6 +228,12 @@
             if(!confirm("Clean database?")) return;
             const res = await fetch(`/admin/purge?admin=${state.user.username}`, { method: 'POST' });
             if(res.ok) { alert("Cleanup Successful!"); showAdmin(); }
+        }
+
+        function filterUsers() {
+            const q = document.getElementById('user-search').value.toLowerCase();
+            const f = state.allUsers.filter(u => u.username.toLowerCase().includes(q));
+            renderUserList(f);
         }
 
         function logout() { localStorage.removeItem('linkup_user'); location.reload(); }
