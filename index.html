@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>LinkUp</title>
+    <title>LinkUp | Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -23,24 +23,24 @@
 <body class="bg-gray-100 dark:bg-slate-950">
 
     <div id="view-auth" class="h-full w-full flex items-center justify-center p-6 bg-emerald-800">
-        <div class="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl">
-            <h1 class="text-3xl font-black text-center mb-6 dark:text-white">LinkUp</h1>
+        <div class="max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl text-center">
+            <h1 class="text-3xl font-black mb-6 dark:text-white">LinkUp</h1>
             <input id="auth-username" type="text" placeholder="Username" class="w-full p-4 mb-4 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white outline-none">
             <input id="auth-password" type="password" placeholder="Password" class="w-full p-4 mb-6 rounded-xl bg-gray-100 dark:bg-slate-800 dark:text-white outline-none">
-            <button onclick="handleAuth('login')" class="w-full bg-emerald-600 text-white py-4 rounded-xl font-black mb-3 active:scale-95">LOGIN</button>
+            <button onclick="handleAuth('login')" class="w-full bg-emerald-600 text-white py-4 rounded-xl font-black mb-3 active:scale-95 transition-transform">LOGIN</button>
             <button onclick="handleAuth('register')" class="w-full text-emerald-600 font-bold">New Account</button>
         </div>
     </div>
 
     <div id="view-app" class="h-full w-full flex flex-col hide">
-        <header class="h-16 bg-emerald-900 text-white flex items-center justify-between px-4 z-20">
+        <header class="h-16 bg-emerald-900 text-white flex items-center justify-between px-4 z-20 shadow-md">
             <div class="flex items-center gap-3">
                 <img id="my-avatar" class="w-10 h-10 rounded-full border-2 border-emerald-400 object-cover bg-emerald-700">
                 <span class="font-bold">LinkUp</span>
             </div>
             <div class="flex items-center gap-4">
-                <button id="btn-admin" onclick="showAdmin()" class="hide p-2 hover:bg-emerald-800 rounded-full"><i data-lucide="shield-check"></i></button>
-                <button onclick="logout()" class="p-2 hover:bg-emerald-800 rounded-full"><i data-lucide="log-out"></i></button>
+                <button id="btn-admin" onclick="showAdmin()" class="hide p-2"><i data-lucide="shield-check"></i></button>
+                <button onclick="logout()" class="p-2"><i data-lucide="log-out"></i></button>
             </div>
         </header>
 
@@ -48,10 +48,10 @@
             <div id="sidebar" class="w-full md:w-80 bg-white dark:bg-slate-950 flex flex-col border-r dark:border-slate-800">
                 <div class="p-3"><input type="text" id="user-search" oninput="filterUsers()" placeholder="Search..." class="w-full p-3 rounded-xl bg-gray-100 dark:bg-slate-900 dark:text-white outline-none text-sm"></div>
                 
-                <div onclick="openChat('Global')" class="p-4 flex items-center justify-between border-b bg-emerald-50 dark:bg-emerald-900/10 cursor-pointer">
+                <div id="global-entry" onclick="openChat('Global')" class="p-4 flex items-center justify-between border-b bg-emerald-50 dark:bg-emerald-900/10 cursor-pointer">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center text-white"><i data-lucide="globe"></i></div>
-                        <div class="flex flex-col"><b class="dark:text-white text-sm">LinkUp Global 🌎</b><span class="text-[10px] text-emerald-600 font-bold">Public Group</span></div>
+                        <div class="flex flex-col"><b class="dark:text-white text-sm">Global 🌎</b><span id="global-count" class="text-[9px] text-emerald-600">0 Members</span></div>
                     </div>
                     <span id="unread-Global" class="hide bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full pulse">0</span>
                 </div>
@@ -97,12 +97,11 @@
         async function handleAuth(t) {
             const u = document.getElementById('auth-username').value;
             const p = document.getElementById('auth-password').value;
-            if(!u || !p) return alert("Enter credentials");
             const res = await fetch(`/${t}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username:u, password:p}) });
             const d = await res.json();
             if(res.ok) {
                 if(t === 'login') { state.user = d; localStorage.setItem('linkup_user', JSON.stringify(d)); enterApp(); }
-                else alert("✅ Account Created! Sign in now.");
+                else alert("✅ Ready! Please Login.");
             } else alert(d.detail);
         }
 
@@ -110,17 +109,13 @@
             document.getElementById('view-auth').classList.add('hide');
             document.getElementById('view-app').classList.remove('hide');
             document.getElementById('my-avatar').src = getAvatar(state.user.username);
-            
             if(state.user.username.toLowerCase() !== PUBLIC_CREATOR) state.unreads[PUBLIC_CREATOR] = 1;
             if(state.user.is_admin) document.getElementById('btn-admin').classList.remove('hide');
-
             initWS(); loadUsers();
             lucide.createIcons();
         }
 
-        function getAvatar(u) { 
-            return u.toLowerCase() === PUBLIC_CREATOR ? '/me.jpeg' : `https://robohash.org/${u}.png?set=set1`; 
-        }
+        function getAvatar(u) { return u.toLowerCase() === PUBLIC_CREATOR ? '/me.jpeg' : `https://robohash.org/${u}.png?set=set1`; }
 
         function initWS() {
             const p = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -133,25 +128,32 @@
                     addMsg(d.from, d.content, d.from === state.user.username, d.time);
                 } else {
                     state.unreads[chatKey] = (state.unreads[chatKey] || 0) + 1;
-                    updateUnreadBadges();
+                    
+                    // REFRESH SORTING: Move messaged user to top
+                    const idx = state.allUsers.findIndex(u => u.username === chatKey);
+                    if(idx > -1) {
+                        const uObj = state.allUsers.splice(idx, 1)[0];
+                        state.allUsers.unshift(uObj);
+                    }
+                    updateUI();
                 }
             };
             state.ws.onclose = () => setTimeout(initWS, 3000);
         }
 
-        function updateUnreadBadges() {
+        function updateUI() {
             const gb = document.getElementById('unread-Global');
             if(state.unreads["Global"] > 0) {
-                gb.innerText = state.unreads["Global"];
-                gb.classList.remove('hide');
+                gb.innerText = state.unreads["Global"]; gb.classList.remove('hide');
             } else { gb.classList.add('hide'); }
+            document.getElementById('global-count').innerText = `${state.allUsers.length} Members`;
             renderUserList(state.allUsers);
         }
 
         async function loadUsers() {
             const res = await fetch('/users');
             state.allUsers = await res.json();
-            renderUserList(state.allUsers);
+            updateUI();
         }
 
         function renderUserList(arr) {
@@ -169,7 +171,7 @@
         }
 
         async function openChat(u) {
-            state.target = u; state.unreads[u] = 0; updateUnreadBadges();
+            state.target = u; state.unreads[u] = 0; updateUI();
             window.history.pushState({ chat: u }, "");
             document.getElementById('sidebar').classList.add('mobile-hide');
             document.getElementById('chat-window').classList.add('mobile-show');
@@ -210,24 +212,18 @@
             const r = await fetch('/stats'); const d = await r.json();
             document.getElementById('admin-content').innerHTML = `
                 <div class="grid grid-cols-2 gap-4 mb-8">
-                    <div class="bg-emerald-50 p-6 rounded-3xl text-center shadow-sm">
-                        <h3 class="text-3xl font-black">${d.users}</h3><p class="text-[8px] font-bold text-emerald-600 uppercase">Users</p>
-                    </div>
-                    <div class="bg-blue-50 p-6 rounded-3xl text-center shadow-sm">
-                        <h3 class="text-3xl font-black">${d.messages}</h3><p class="text-[8px] font-bold text-blue-600 uppercase">Messages</p>
-                    </div>
+                    <div class="bg-emerald-50 p-6 rounded-3xl text-center"><h3 class="text-3xl font-black">${d.users}</h3><p class="text-[8px] font-bold text-emerald-600 uppercase">Users</p></div>
+                    <div class="bg-blue-50 p-6 rounded-3xl text-center"><h3 class="text-3xl font-black">${d.messages}</h3><p class="text-[8px] font-bold text-blue-600 uppercase">Messages</p></div>
                 </div>
-                <div class="bg-red-50 p-6 rounded-3xl border border-red-100">
-                    <button onclick="triggerPurge()" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold text-xs">PURGE OLD DATA NOW</button>
-                </div>
+                <div class="bg-red-50 p-6 rounded-3xl border border-red-100"><h4 class="text-xs font-black text-red-600 uppercase mb-2">Auto-Delete (3 Days)</h4><button onclick="triggerPurge()" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold text-xs">PURGE OLD DATA</button></div>
             `;
             document.getElementById('view-admin').classList.remove('hide');
         }
 
         async function triggerPurge() {
-            if(!confirm("Clean database?")) return;
-            const res = await fetch(`/admin/purge?admin=${state.user.username}`, { method: 'POST' });
-            if(res.ok) { alert("Cleanup Successful!"); showAdmin(); }
+            if(!confirm("Clean?")) return;
+            await fetch(`/admin/purge?admin=${state.user.username}`, { method: 'POST' });
+            showAdmin();
         }
 
         function filterUsers() {
