@@ -37,9 +37,11 @@ class AuthData(BaseModel):
     username: str; password: str
 
 def get_now_time():
+    # Nigeria Time (UTC+1)
     return (datetime.utcnow() + timedelta(hours=1)).strftime("%I:%M %p")
 
 def purge_old_messages(db):
+    """Auto-delete messages older than 3 days."""
     cutoff = datetime.utcnow() - timedelta(days=3)
     db.query(MessageDB).filter(MessageDB.created_at < cutoff).delete()
     db.commit()
@@ -59,7 +61,7 @@ async def register(data: AuthData):
             raise HTTPException(400, "User exists")
         is_admin = (data.username.lower() == ADMIN_KEY.lower())
         db.add(UserDB(username=data.username, password=hashed, is_admin=is_admin))
-        welcome = f"Hello {data.username}! 🌟 I'm emeritusmustapha, the creator. Welcome to LinkUp!"
+        welcome = f"Hello {data.username}! 🌟 I'm emeritusmustapha. Welcome to LinkUp!"
         db.add(MessageDB(sender=PUBLIC_CREATOR, receiver=data.username, content=welcome, time_label=get_now_time()))
         db.commit(); return {"message": "Success"}
     finally: db.close()
@@ -98,9 +100,7 @@ async def get_stats():
 @app.post("/admin/purge")
 async def manual_purge(admin: str):
     if admin.lower() != ADMIN_KEY.lower(): raise HTTPException(403)
-    db = SessionLocal()
-    try: purge_old_messages(db); return {"status": "Database cleaned"}
-    finally: db.close()
+    db = SessionLocal(); purge_old_messages(db); db.close(); return {"status": "Purged"}
 
 class ConnectionManager:
     def __init__(self): self.active = {}
