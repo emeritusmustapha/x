@@ -40,7 +40,7 @@ class AuthData(BaseModel):
     username: str; password: str
 
 def get_now_time():
-    # Adjusted for Nigeria Time (UTC+1)
+    # Nigeria Time (UTC+1)
     return (datetime.utcnow() + timedelta(hours=1)).strftime("%I:%M %p")
 
 def purge_old_messages(db):
@@ -61,31 +61,38 @@ async def serve_image():
 async def register(data: AuthData):
     db = SessionLocal()
     try:
+        u_name = data.username.strip()
         hashed = hashlib.sha256(data.password.encode()).hexdigest()
-        if db.query(UserDB).filter(UserDB.username.ilike(data.username)).first():
-            raise HTTPException(status_code=400, detail="User exists")
+        if db.query(UserDB).filter(UserDB.username.ilike(u_name)).first():
+            raise HTTPException(status_code=400, detail="Username already exists")
         
-        is_admin = (data.username.lower() == ADMIN_KEY.lower())
-        user = UserDB(username=data.username, password=hashed, is_admin=is_admin)
+        is_admin = (u_name.lower() == ADMIN_KEY.lower())
+        user = UserDB(username=u_name, password=hashed, is_admin=is_admin)
         db.add(user)
         
-        # 'emeritusmustapha' sends the welcoming message
-        welcome = f"Hi {username}, welcome to LinkUp! I'm Emeritus Mustapha.  I've set up this space for seamless communication. If you have any feedback or questions, I'm just a message away. Enjoy the app!"
-        db.add(MessageDB(sender=PUBLIC_CREATOR, receiver=data.username, content=welcome, time_label=get_now_time()))
+        # 'emeritusmustapha' sends the greeting
+        welcome = f"Hello {u_name}! 🌟 I'm emeritusmustapha, the creator. Welcome to LinkUp! Use the Global Group to meet everyone."
+        db.add(MessageDB(sender=PUBLIC_CREATOR, receiver=u_name, content=welcome, time_label=get_now_time()))
         
         db.commit()
         return {"message": "Success"}
-    finally: db.close()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Registration failed. Try again.")
+    finally:
+        db.close()
 
 @app.post("/login")
 async def login(data: AuthData):
     db = SessionLocal()
     try:
+        u_name = data.username.strip()
         hashed = hashlib.sha256(data.password.encode()).hexdigest()
-        user = db.query(UserDB).filter(UserDB.username.ilike(data.username), UserDB.password == hashed).first()
+        user = db.query(UserDB).filter(UserDB.username.ilike(u_name), UserDB.password == hashed).first()
         if not user: raise HTTPException(status_code=401, detail="Invalid login")
         return {"username": user.username, "is_admin": user.is_admin}
-    finally: db.close()
+    finally:
+        db.close()
 
 @app.get("/users")
 async def get_users():
