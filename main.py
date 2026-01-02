@@ -21,16 +21,13 @@ Base = declarative_base()
 class UserDB(Base):
     __tablename__ = "users"
     username = Column(String, primary_key=True)
-    password = Column(String)
-    is_admin = Column(Boolean, default=False)
+    password = Column(String); is_admin = Column(Boolean, default=False)
 
 class MessageDB(Base):
     __tablename__ = "messages"
     id = Column(Integer, primary_key=True)
-    sender = Column(String)
-    receiver = Column(String) 
-    content = Column(String)
-    time_label = Column(String) 
+    sender = Column(String); receiver = Column(String) 
+    content = Column(String); time_label = Column(String) 
     created_at = Column(DateTime, default=datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
@@ -40,11 +37,9 @@ class AuthData(BaseModel):
     username: str; password: str
 
 def get_now_time():
-    # Nigeria Time (UTC+1)
     return (datetime.utcnow() + timedelta(hours=1)).strftime("%I:%M %p")
 
 def purge_old_messages(db):
-    """Auto-delete messages older than 3 days."""
     cutoff = datetime.utcnow() - timedelta(days=3)
     db.query(MessageDB).filter(MessageDB.created_at < cutoff).delete()
     db.commit()
@@ -53,46 +48,31 @@ def purge_old_messages(db):
 async def serve_ui(): return FileResponse("index.html")
 
 @app.get("/me.jpeg")
-async def serve_image(): 
-    if os.path.exists("me.jpeg"): return FileResponse("me.jpeg")
-    return HTTPException(status_code=404)
+async def serve_image(): return FileResponse("me.jpeg") if os.path.exists("me.jpeg") else HTTPException(404)
 
 @app.post("/register")
 async def register(data: AuthData):
     db = SessionLocal()
     try:
-        u_name = data.username.strip()
         hashed = hashlib.sha256(data.password.encode()).hexdigest()
-        if db.query(UserDB).filter(UserDB.username.ilike(u_name)).first():
-            raise HTTPException(status_code=400, detail="Username already exists")
-        
-        is_admin = (u_name.lower() == ADMIN_KEY.lower())
-        user = UserDB(username=u_name, password=hashed, is_admin=is_admin)
-        db.add(user)
-        
-        # 'emeritusmustapha' sends the greeting
-        welcome = f"Hello {u_name}! 🌟 I'm emeritusmustapha, the creator. Welcome to LinkUp! Use the Global Group to meet everyone."
-        db.add(MessageDB(sender=PUBLIC_CREATOR, receiver=u_name, content=welcome, time_label=get_now_time()))
-        
-        db.commit()
-        return {"message": "Success"}
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Registration failed. Try again.")
-    finally:
-        db.close()
+        if db.query(UserDB).filter(UserDB.username.ilike(data.username)).first():
+            raise HTTPException(400, "User exists")
+        is_admin = (data.username.lower() == ADMIN_KEY.lower())
+        db.add(UserDB(username=data.username, password=hashed, is_admin=is_admin))
+        welcome = f"Hello {data.username}! 🌟 I'm emeritusmustapha, the creator. Welcome to LinkUp!"
+        db.add(MessageDB(sender=PUBLIC_CREATOR, receiver=data.username, content=welcome, time_label=get_now_time()))
+        db.commit(); return {"message": "Success"}
+    finally: db.close()
 
 @app.post("/login")
 async def login(data: AuthData):
     db = SessionLocal()
     try:
-        u_name = data.username.strip()
         hashed = hashlib.sha256(data.password.encode()).hexdigest()
-        user = db.query(UserDB).filter(UserDB.username.ilike(u_name), UserDB.password == hashed).first()
-        if not user: raise HTTPException(status_code=401, detail="Invalid login")
+        user = db.query(UserDB).filter(UserDB.username.ilike(data.username), UserDB.password == hashed).first()
+        if not user: raise HTTPException(401, "Invalid login")
         return {"username": user.username, "is_admin": user.is_admin}
-    finally:
-        db.close()
+    finally: db.close()
 
 @app.get("/users")
 async def get_users():
@@ -104,9 +84,8 @@ async def get_users():
 async def get_history(u1: str, u2: str):
     db = SessionLocal()
     try:
-        purge_old_messages(db) 
-        if u2 == "Global":
-            return db.query(MessageDB).filter(MessageDB.receiver == "Global").order_by(MessageDB.created_at).all()
+        purge_old_messages(db)
+        if u2 == "Global": return db.query(MessageDB).filter(MessageDB.receiver == "Global").order_by(MessageDB.created_at).all()
         return db.query(MessageDB).filter(or_(and_(MessageDB.sender==u1, MessageDB.receiver==u2), and_(MessageDB.sender==u2, MessageDB.receiver==u1))).order_by(MessageDB.created_at).all()
     finally: db.close()
 
@@ -118,11 +97,9 @@ async def get_stats():
 
 @app.post("/admin/purge")
 async def manual_purge(admin: str):
-    if admin.lower() != ADMIN_KEY.lower(): raise HTTPException(status_code=403)
+    if admin.lower() != ADMIN_KEY.lower(): raise HTTPException(403)
     db = SessionLocal()
-    try:
-        purge_old_messages(db)
-        return {"status": "Database cleaned"}
+    try: purge_old_messages(db); return {"status": "Database cleaned"}
     finally: db.close()
 
 class ConnectionManager:
@@ -143,10 +120,9 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     try:
         while True:
             data = await websocket.receive_json()
-            db = SessionLocal()
-            t_label = get_now_time()
-            new_m = MessageDB(sender=user_id, receiver=data['to'], content=data['content'], time_label=t_label)
-            db.add(new_m); db.commit(); db.close()
+            db = SessionLocal(); t_label = get_now_time()
+            db.add(MessageDB(sender=user_id, receiver=data['to'], content=data['content'], time_label=t_label))
+            db.commit(); db.close()
             payload = {"from": user_id, "to": data['to'], "content": data['content'], "time": t_label}
             if data['to'] == "Global": await manager.broadcast(payload)
             else: await manager.send(payload, data['to'])
