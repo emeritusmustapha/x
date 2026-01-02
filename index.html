@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>LinkUp | Official</title>
+    <title>LinkUp | Global Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -37,9 +37,10 @@
         <header class="h-16 bg-emerald-900 text-white flex items-center justify-between px-4 z-20 shadow-md">
             <div class="flex items-center gap-3">
                 <img id="my-avatar" class="w-10 h-10 rounded-full border-2 border-emerald-400 object-cover bg-emerald-700">
-                <span class="font-bold">LinkUp</span>
+                <span class="font-bold font-sans">LinkUp</span>
             </div>
             <div class="flex items-center gap-4">
+                <button id="btn-admin" onclick="showAdmin()" class="hide p-2 hover:bg-emerald-800 rounded-full"><i data-lucide="shield-check"></i></button>
                 <button onclick="logout()"><i data-lucide="log-out"></i></button>
             </div>
         </header>
@@ -47,6 +48,12 @@
         <div class="flex-1 flex overflow-hidden relative">
             <div id="sidebar" class="w-full md:w-80 bg-white dark:bg-slate-950 flex flex-col border-r dark:border-slate-800">
                 <div class="p-3"><input type="text" id="user-search" oninput="filterUsers()" placeholder="Search..." class="w-full p-3 rounded-xl bg-gray-100 dark:bg-slate-900 dark:text-white outline-none text-sm"></div>
+                <div id="global-entry" onclick="openChat('Global')" class="p-4 flex items-center justify-between border-b bg-emerald-50 dark:bg-emerald-900/10 cursor-pointer">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center text-white"><i data-lucide="globe"></i></div>
+                        <div class="flex flex-col"><b class="dark:text-white text-sm">LinkUp Global 🌎</b><span class="text-[10px] text-emerald-600">Public Group</span></div>
+                    </div>
+                </div>
                 <div id="chat-list" class="flex-1 overflow-y-auto"></div>
             </div>
             
@@ -54,7 +61,10 @@
                 <div class="h-16 bg-white dark:bg-slate-800 flex items-center px-4 gap-3 border-b dark:border-slate-700">
                     <button onclick="history.back()" class="md:hidden p-2 text-emerald-600"><i data-lucide="arrow-left"></i></button>
                     <img id="chat-target-avatar" class="w-10 h-10 rounded-full object-cover">
-                    <b id="chat-target-name" class="dark:text-white text-sm">Chat</b>
+                    <div class="flex flex-col">
+                        <b id="chat-target-name" class="dark:text-white text-sm">Chat</b>
+                        <span id="chat-status" class="text-[9px] text-gray-400"></span>
+                    </div>
                 </div>
                 <div id="message-container" class="flex-1 overflow-y-auto p-4 whatsapp-bg flex flex-col gap-2"></div>
                 <form onsubmit="sendMessage(event)" class="p-3 bg-white dark:bg-slate-800 flex gap-2 border-t">
@@ -63,6 +73,14 @@
                 </form>
             </div>
         </div>
+    </div>
+
+    <div id="view-admin" class="fixed inset-0 z-[60] bg-white dark:bg-slate-950 hide flex flex-col">
+        <header class="h-16 bg-slate-900 text-white flex items-center justify-between px-6 font-bold">
+            <span>ADMIN DASHBOARD</span>
+            <button onclick="document.getElementById('view-admin').classList.add('hide')"><i data-lucide="x"></i></button>
+        </header>
+        <div id="admin-content" class="p-6 overflow-y-auto"></div>
     </div>
 
     <script>
@@ -75,7 +93,6 @@
             if(saved) { state.user = JSON.parse(saved); enterApp(); }
         }
 
-        // Logic for Android Back Button
         window.onpopstate = () => { if (state.target) closeChat(); };
 
         async function handleAuth(t) {
@@ -95,11 +112,18 @@
             document.getElementById('my-avatar').src = getAvatar(state.user.username);
             
             if(state.user.username.toLowerCase() !== ADMIN) state.unreads[ADMIN] = 1;
+            
+            // ADMIN SHIELD FIX
+            if(state.user.username.toLowerCase() === ADMIN) {
+                document.getElementById('btn-admin').classList.remove('hide');
+            }
+
             initWS(); loadUsers();
+            lucide.createIcons();
         }
 
-        // --- USES YOUR UPLOADED me.jpeg ---
         function getAvatar(u) { 
+            if(u === "Global") return ""; 
             return u.toLowerCase() === ADMIN ? '/me.jpeg' : `https://robohash.org/${u}.png?set=set1`; 
         }
 
@@ -108,14 +132,14 @@
             state.ws = new WebSocket(`${p}//${location.host}/ws/${state.user.username}`);
             state.ws.onmessage = (e) => {
                 const d = JSON.parse(e.data);
-                if(state.target === d.from) addMsg(d.from, d.content, false, d.time);
-                else { 
-                    state.unreads[d.from] = (state.unreads[d.from] || 0) + 1;
-                    
-                    // Move sender to top
-                    const idx = state.allUsers.findIndex(u => u.username === d.from);
-                    if(idx > -1) { const u = state.allUsers.splice(idx,1)[0]; state.allUsers.unshift(u); }
-                    renderUserList(state.allUsers); 
+                const isGlobalMsg = (d.to === "Global");
+                const sender = isGlobalMsg ? "Global" : d.from;
+
+                if(state.target === sender) {
+                    addMsg(d.from, d.content, d.from === state.user.username, d.time);
+                } else {
+                    state.unreads[sender] = (state.unreads[sender] || 0) + 1;
+                    renderUserList(state.allUsers);
                 }
             };
             state.ws.onclose = () => setTimeout(initWS, 3000);
@@ -124,12 +148,6 @@
         async function loadUsers() {
             const res = await fetch('/users');
             state.allUsers = await res.json();
-            
-            // Keep Admin at top for new users
-            if(state.user.username.toLowerCase() !== ADMIN) {
-                const adminIdx = state.allUsers.findIndex(u => u.username.toLowerCase() === ADMIN);
-                if(adminIdx > -1) { const a = state.allUsers.splice(adminIdx,1)[0]; state.allUsers.unshift(a); }
-            }
             renderUserList(state.allUsers);
         }
 
@@ -137,9 +155,9 @@
             document.getElementById('chat-list').innerHTML = arr.map(u => {
                 if(u.username === state.user.username) return '';
                 const c = state.unreads[u.username] || 0;
-                return `<div onclick="openChat('${u.username}')" class="p-4 flex items-center justify-between border-b dark:border-slate-800 hover:bg-emerald-50 cursor-pointer">
+                return `<div onclick="openChat('${u.username}')" class="p-4 flex items-center justify-between border-b dark:border-slate-800 hover:bg-emerald-50 cursor-pointer transition-colors">
                     <div class="flex items-center gap-3">
-                        <img src="${getAvatar(u.username)}" class="w-12 h-12 rounded-full border shadow-sm object-cover">
+                        <img src="${getAvatar(u.username)}" class="w-12 h-12 rounded-full border object-cover">
                         <div class="flex flex-col"><b class="dark:text-white font-bold text-xs">${u.username}</b>${u.username.toLowerCase() === ADMIN ? '<span class="text-[8px] text-emerald-600 font-black uppercase">Creator</span>' : ''}</div>
                     </div>
                     ${c > 0 ? `<span class="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full pulse">${c}</span>` : ''}
@@ -149,14 +167,21 @@
 
         async function openChat(u) {
             state.target = u; state.unreads[u] = 0; renderUserList(state.allUsers);
-            
-            // Activate back button history
             window.history.pushState({ chat: u }, "");
-
             document.getElementById('sidebar').classList.add('mobile-hide');
             document.getElementById('chat-window').classList.add('mobile-show');
-            document.getElementById('chat-target-name').innerText = u;
-            document.getElementById('chat-target-avatar').src = getAvatar(u);
+            
+            const headerImg = document.getElementById('chat-target-avatar');
+            if(u === "Global") {
+                headerImg.src = "https://cdn-icons-png.flaticon.com/512/825/825590.png";
+                document.getElementById('chat-target-name').innerText = "LinkUp Global 🌎";
+                document.getElementById('chat-status').innerText = "Public Group Chat";
+            } else {
+                headerImg.src = getAvatar(u);
+                document.getElementById('chat-target-name').innerText = u;
+                document.getElementById('chat-status').innerText = "Private Message";
+            }
+            
             const res = await fetch(`/messages/${state.user.username}/${u}`);
             const msgs = await res.json();
             const container = document.getElementById('message-container'); container.innerHTML = '';
@@ -164,17 +189,14 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        function closeChat() { 
-            document.getElementById('sidebar').classList.remove('mobile-hide'); 
-            document.getElementById('chat-window').classList.remove('mobile-show'); 
-            state.target = null; 
-        }
+        function closeChat() { document.getElementById('sidebar').classList.remove('mobile-hide'); document.getElementById('chat-window').classList.remove('mobile-show'); state.target = null; }
 
         function addMsg(s, c, isMe, time) {
             const container = document.getElementById('message-container');
             const d = document.createElement('div'); d.className = `flex ${isMe ? 'justify-end' : 'justify-start'} mb-1`;
+            const senderTag = (state.target === "Global" && !isMe) ? `<div class="text-[8px] font-bold text-emerald-600 mb-1">${s}</div>` : "";
             d.innerHTML = `<div class="p-3 rounded-2xl max-w-[85%] shadow-sm text-xs ${isMe ? 'bg-emerald-600 text-white' : 'bg-white text-gray-800'}">
-                <div>${c}</div><div class="text-[8px] mt-1 text-right opacity-60 font-bold">${time || ''}</div>
+                ${senderTag}<div>${c}</div><div class="text-[8px] mt-1 text-right opacity-60 font-bold">${time || ''}</div>
             </div>`;
             container.appendChild(d); container.scrollTop = container.scrollHeight;
         }
@@ -183,13 +205,8 @@
             e.preventDefault(); const i = document.getElementById('chat-input'); if(!i.value || !state.target) return;
             const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             state.ws.send(JSON.stringify({ to: state.target, content: i.value }));
-            addMsg(state.user.username, i.value, true, now); i.value = '';
-        }
-
-        function filterUsers() {
-            const q = document.getElementById('user-search').value.toLowerCase();
-            const f = state.allUsers.filter(u => u.username.toLowerCase().includes(q));
-            renderUserList(f);
+            if(state.target !== "Global") addMsg(state.user.username, i.value, true, now); 
+            i.value = '';
         }
 
         function logout() { localStorage.removeItem('linkup_user'); location.reload(); }
