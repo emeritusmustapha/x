@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>LinkUp | Pro</title>
+    <title>LinkUp | Instant</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -47,27 +47,24 @@
         <div class="flex-1 flex overflow-hidden relative">
             <div id="sidebar" class="w-full md:w-80 bg-white dark:bg-slate-950 flex flex-col border-r dark:border-slate-800">
                 <div class="p-3"><input type="text" id="user-search" oninput="filterUsers()" placeholder="Search..." class="w-full p-3 rounded-xl bg-gray-100 dark:bg-slate-900 dark:text-white outline-none text-sm"></div>
-                
                 <div id="global-entry" onclick="openChat('Global')" class="p-4 flex items-center justify-between border-b bg-emerald-50 dark:bg-emerald-900/10 cursor-pointer">
                     <div class="flex items-center gap-3">
                         <div class="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center text-white"><i data-lucide="globe"></i></div>
-                        <div class="flex flex-col"><b class="dark:text-white text-sm">Global 🌎</b><span id="global-count" class="text-[9px] text-emerald-600">0 Members</span></div>
+                        <div class="flex flex-col"><b class="dark:text-white text-sm text-emerald-700">Global Hub 🌎</b><span id="global-count" class="text-[9px] text-emerald-600 font-bold">0 Members</span></div>
                     </div>
                     <span id="unread-Global" class="hide bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full pulse">0</span>
                 </div>
-                
                 <div id="chat-list" class="flex-1 overflow-y-auto"></div>
             </div>
-            
             <div id="chat-window" class="flex-1 flex-col bg-gray-200 dark:bg-slate-900">
                 <div class="h-16 bg-white dark:bg-slate-800 flex items-center px-4 gap-3 border-b dark:border-slate-700">
-                    <button onclick="history.back()" class="md:hidden p-2 text-emerald-600"><i data-lucide="arrow-left"></i></button>
+                    <button onclick="closeChat()" class="md:hidden p-2 text-emerald-600"><i data-lucide="arrow-left"></i></button>
                     <img id="chat-target-avatar" class="w-10 h-10 rounded-full object-cover">
                     <b id="chat-target-name" class="dark:text-white text-sm">Chat</b>
                 </div>
                 <div id="message-container" class="flex-1 overflow-y-auto p-4 whatsapp-bg flex flex-col gap-2"></div>
                 <form onsubmit="sendMessage(event)" class="p-3 bg-white dark:bg-slate-800 flex gap-2 border-t">
-                    <input id="chat-input" type="text" placeholder="Message..." class="flex-1 p-3 bg-gray-100 dark:bg-slate-700 rounded-full outline-none dark:text-white text-sm">
+                    <input id="chat-input" type="text" placeholder="Type a message..." class="flex-1 p-3 bg-gray-100 dark:bg-slate-700 rounded-full outline-none dark:text-white text-sm">
                     <button class="bg-emerald-600 text-white w-12 h-12 rounded-full font-bold">➤</button>
                 </form>
             </div>
@@ -75,15 +72,15 @@
     </div>
 
     <div id="view-admin" class="fixed inset-0 z-[60] bg-white dark:bg-slate-950 hide flex flex-col">
-        <header class="h-16 bg-slate-900 text-white flex items-center justify-between px-6 font-bold shadow-lg">
+        <header class="h-16 bg-slate-900 text-white flex items-center justify-between px-6 font-bold">
             <span>ADMIN DASHBOARD</span>
             <button onclick="document.getElementById('view-admin').classList.add('hide')"><i data-lucide="x"></i></button>
         </header>
-        <div id="admin-content" class="p-6 overflow-y-auto flex-1"></div>
+        <div id="admin-content" class="p-6"></div>
     </div>
 
     <script>
-        let state = { user: null, target: null, ws: null, allUsers: [], unreads: {} };
+        let state = { user: null, target: null, ws: null, allUsers: [], unreads: {}, cache: {} };
         const PUBLIC_CREATOR = "emeritusmustapha";
 
         async function init() {
@@ -92,30 +89,17 @@
             if(saved) { state.user = JSON.parse(saved); enterApp(); }
         }
 
+        // AUTO-SYNC when switching back to app
+        window.onfocus = () => { if(state.user) { loadUsers(); if(state.target) openChat(state.target); } };
         window.onpopstate = () => { if (state.target) closeChat(); };
-
-        async function handleAuth(t) {
-            const u = document.getElementById('auth-username').value;
-            const p = document.getElementById('auth-password').value;
-            const res = await fetch(`/${t}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username:u, password:p}) });
-            const d = await res.json();
-            if(res.ok) {
-                if(t === 'login') { state.user = d; localStorage.setItem('linkup_user', JSON.stringify(d)); enterApp(); }
-                else alert("✅ Ready! Please Login.");
-            } else alert(d.detail);
-        }
 
         function enterApp() {
             document.getElementById('view-auth').classList.add('hide');
             document.getElementById('view-app').classList.remove('hide');
             document.getElementById('my-avatar').src = getAvatar(state.user.username);
-            if(state.user.username.toLowerCase() !== PUBLIC_CREATOR) state.unreads[PUBLIC_CREATOR] = 1;
             if(state.user.is_admin) document.getElementById('btn-admin').classList.remove('hide');
-            initWS(); loadUsers();
-            lucide.createIcons();
+            initWS(); loadUsers(); lucide.createIcons();
         }
-
-        function getAvatar(u) { return u.toLowerCase() === PUBLIC_CREATOR ? '/me.jpeg' : `https://robohash.org/${u}.png?set=set1`; }
 
         function initWS() {
             const p = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -123,13 +107,15 @@
             state.ws.onmessage = (e) => {
                 const d = JSON.parse(e.data);
                 const chatKey = (d.to === "Global") ? "Global" : d.from;
+                
+                // Add to cache immediately
+                if(!state.cache[chatKey]) state.cache[chatKey] = [];
+                state.cache[chatKey].push(d);
 
                 if(state.target === chatKey) {
                     addMsg(d.from, d.content, d.from === state.user.username, d.time);
                 } else {
                     state.unreads[chatKey] = (state.unreads[chatKey] || 0) + 1;
-                    
-                    // REFRESH SORTING: Move messaged user to top
                     const idx = state.allUsers.findIndex(u => u.username === chatKey);
                     if(idx > -1) {
                         const uObj = state.allUsers.splice(idx, 1)[0];
@@ -138,7 +124,13 @@
                     updateUI();
                 }
             };
-            state.ws.onclose = () => setTimeout(initWS, 3000);
+            state.ws.onclose = () => setTimeout(initWS, 1000);
+        }
+
+        async function loadUsers() {
+            const res = await fetch('/users');
+            state.allUsers = await res.json();
+            updateUI();
         }
 
         function updateUI() {
@@ -148,12 +140,6 @@
             } else { gb.classList.add('hide'); }
             document.getElementById('global-count').innerText = `${state.allUsers.length} Members`;
             renderUserList(state.allUsers);
-        }
-
-        async function loadUsers() {
-            const res = await fetch('/users');
-            state.allUsers = await res.json();
-            updateUI();
         }
 
         function renderUserList(arr) {
@@ -175,64 +161,76 @@
             window.history.pushState({ chat: u }, "");
             document.getElementById('sidebar').classList.add('mobile-hide');
             document.getElementById('chat-window').classList.add('mobile-show');
+            
+            const cont = document.getElementById('message-container');
+            const hName = document.getElementById('chat-target-name');
             const hImg = document.getElementById('chat-target-avatar');
+
             if(u === "Global") {
                 hImg.src = "https://cdn-icons-png.flaticon.com/512/825/825590.png";
-                document.getElementById('chat-target-name').innerText = "LinkUp Global 🌎";
+                hName.innerText = "LinkUp Global 🌎";
             } else {
-                hImg.src = getAvatar(u);
-                document.getElementById('chat-target-name').innerText = u;
+                hImg.src = getAvatar(u); hName.innerText = u;
             }
+
+            // INSTANT CACHE LOAD
+            if(state.cache[u]) {
+                cont.innerHTML = '';
+                state.cache[u].forEach(m => addMsg(m.sender || m.from, m.content, (m.sender||m.from) === state.user.username, m.time_label || m.time));
+            }
+
+            // SILENT BACKGROUND FETCH
             const res = await fetch(`/messages/${state.user.username}/${u}`);
             const msgs = await res.json();
-            const container = document.getElementById('message-container'); container.innerHTML = '';
+            state.cache[u] = msgs;
+            cont.innerHTML = '';
             msgs.forEach(m => addMsg(m.sender, m.content, m.sender === state.user.username, m.time_label));
-            container.scrollTop = container.scrollHeight;
+            cont.scrollTop = cont.scrollHeight;
         }
 
-        function closeChat() { document.getElementById('sidebar').classList.remove('mobile-hide'); document.getElementById('chat-window').classList.remove('mobile-show'); state.target = null; }
-
         function addMsg(s, c, isMe, time) {
-            const container = document.getElementById('message-container');
+            const cont = document.getElementById('message-container');
             const d = document.createElement('div'); d.className = `flex ${isMe ? 'justify-end' : 'justify-start'} mb-1`;
             const sTag = (state.target === "Global" && !isMe) ? `<div class="text-[8px] font-bold text-emerald-600 mb-1">${s}</div>` : "";
             d.innerHTML = `<div class="p-3 rounded-2xl max-w-[85%] shadow-sm text-xs ${isMe ? 'bg-emerald-600 text-white' : 'bg-white text-gray-800'}">
                 ${sTag}<div>${c}</div><div class="text-[8px] mt-1 text-right opacity-60 font-bold">${time || ''}</div>
             </div>`;
-            container.appendChild(d); container.scrollTop = container.scrollHeight;
+            cont.appendChild(d); cont.scrollTop = cont.scrollHeight;
         }
 
         function sendMessage(e) {
             e.preventDefault(); const i = document.getElementById('chat-input'); if(!i.value || !state.target) return;
+            const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            addMsg(state.user.username, i.value, true, now);
             state.ws.send(JSON.stringify({ to: state.target, content: i.value }));
             i.value = '';
         }
 
+        function closeChat() { document.getElementById('sidebar').classList.remove('mobile-hide'); document.getElementById('chat-window').classList.remove('mobile-show'); state.target = null; }
+        function getAvatar(u) { return u.toLowerCase() === PUBLIC_CREATOR ? '/me.jpeg' : `https://robohash.org/${u}.png?set=set1`; }
+        function logout() { localStorage.removeItem('linkup_user'); location.reload(); }
+        async function handleAuth(t) {
+            const u = document.getElementById('auth-username').value;
+            const p = document.getElementById('auth-password').value;
+            const res = await fetch(`/${t}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username:u, password:p}) });
+            const d = await res.json();
+            if(res.ok) {
+                if(t === 'login') { state.user = d; localStorage.setItem('linkup_user', JSON.stringify(d)); enterApp(); }
+                else alert("Account Created! Login now.");
+            } else alert(d.detail);
+        }
         async function showAdmin() {
             const r = await fetch('/stats'); const d = await r.json();
             document.getElementById('admin-content').innerHTML = `
-                <div class="grid grid-cols-2 gap-4 mb-8">
-                    <div class="bg-emerald-50 p-6 rounded-3xl text-center"><h3 class="text-3xl font-black">${d.users}</h3><p class="text-[8px] font-bold text-emerald-600 uppercase">Users</p></div>
-                    <div class="bg-blue-50 p-6 rounded-3xl text-center"><h3 class="text-3xl font-black">${d.messages}</h3><p class="text-[8px] font-bold text-blue-600 uppercase">Messages</p></div>
+                <div class="grid grid-cols-2 gap-4 mb-8 text-center">
+                    <div class="bg-emerald-50 p-6 rounded-3xl"><h3 class="text-3xl font-black">${d.users}</h3><p class="text-[8px] font-bold text-emerald-600">USERS</p></div>
+                    <div class="bg-blue-50 p-6 rounded-3xl"><h3 class="text-3xl font-black">${d.messages}</h3><p class="text-[8px] font-bold text-blue-600">MESSAGES</p></div>
                 </div>
-                <div class="bg-red-50 p-6 rounded-3xl border border-red-100"><h4 class="text-xs font-black text-red-600 uppercase mb-2">Auto-Delete (3 Days)</h4><button onclick="triggerPurge()" class="w-full bg-red-600 text-white py-3 rounded-xl font-bold text-xs">PURGE OLD DATA</button></div>
+                <button onclick="triggerPurge()" class="w-full bg-red-600 text-white py-4 rounded-xl font-bold">PURGE DATABASE</button>
             `;
             document.getElementById('view-admin').classList.remove('hide');
         }
-
-        async function triggerPurge() {
-            if(!confirm("Clean?")) return;
-            await fetch(`/admin/purge?admin=${state.user.username}`, { method: 'POST' });
-            showAdmin();
-        }
-
-        function filterUsers() {
-            const q = document.getElementById('user-search').value.toLowerCase();
-            const f = state.allUsers.filter(u => u.username.toLowerCase().includes(q));
-            renderUserList(f);
-        }
-
-        function logout() { localStorage.removeItem('linkup_user'); location.reload(); }
+        async function triggerPurge() { if(confirm("Clean history?")) { await fetch(`/admin/purge?admin=${state.user.username}`, {method:'POST'}); showAdmin(); } }
         init();
     </script>
 </body>
