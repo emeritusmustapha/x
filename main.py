@@ -37,8 +37,10 @@ app = FastAPI()
 class AuthData(BaseModel):
     username: str; password: str
 
+# --- TIMEZONE LOGIC (Nigeria UTC+1) ---
 def get_now_time():
-    return datetime.now().strftime("%I:%M %p")
+    local_time = datetime.utcnow() + timedelta(hours=1)
+    return local_time.strftime("%I:%M %p")
 
 def purge_old_messages(db):
     cutoff = datetime.utcnow() - timedelta(days=3)
@@ -48,16 +50,24 @@ def purge_old_messages(db):
 @app.get("/")
 async def serve_ui(): return FileResponse("index.html")
 
+# --- SERVE YOUR PROFILE PICTURE ---
+@app.get("/me.jpeg")
+async def serve_image(): 
+    if os.path.exists("me.jpeg"):
+        return FileResponse("me.jpeg")
+    return HTTPException(status_code=404)
+
 @app.post("/register")
 async def register(data: AuthData):
     db = SessionLocal()
     try:
         hashed = hashlib.sha256(data.password.encode()).hexdigest()
-        if db.query(UserDB).filter(UserDB.username == data.username).first():
+        if db.query(UserDB).filter(UserDB.username.ilike(data.username)).first():
             raise HTTPException(status_code=400, detail="User exists")
-        is_admin = (data.username == "emeritusmustapha")
+        is_admin = (data.username.lower() == "emeritusmustapha")
         user = UserDB(username=data.username, password=hashed, is_admin=is_admin)
         db.add(user)
+        # Admin Welcome Message
         welcome = f"Hello {data.username}! 🌟 I'm emeritusmustapha, the creator. Welcome to LinkUp!"
         db.add(MessageDB(sender="emeritusmustapha", receiver=data.username, content=welcome, time_label=get_now_time()))
         db.commit()
@@ -69,7 +79,7 @@ async def login(data: AuthData):
     db = SessionLocal()
     try:
         hashed = hashlib.sha256(data.password.encode()).hexdigest()
-        user = db.query(UserDB).filter(UserDB.username == data.username, UserDB.password == hashed).first()
+        user = db.query(UserDB).filter(UserDB.username.ilike(data.username), UserDB.password == hashed).first()
         if not user: raise HTTPException(status_code=401, detail="Invalid login")
         return {"username": user.username, "is_admin": user.is_admin}
     finally: db.close()
@@ -86,23 +96,6 @@ async def get_history(u1: str, u2: str):
     try:
         purge_old_messages(db) 
         return db.query(MessageDB).filter(or_(and_(MessageDB.sender==u1, MessageDB.receiver==u2), and_(MessageDB.sender==u2, MessageDB.receiver==u1))).order_by(MessageDB.created_at).all()
-    finally: db.close()
-
-@app.get("/stats")
-async def get_stats():
-    db = SessionLocal()
-    try: return {"users": db.query(UserDB).count(), "messages": db.query(MessageDB).count()}
-    finally: db.close()
-
-@app.delete("/admin/delete_user/{target}")
-async def delete_user(target: str, admin: str):
-    if admin != "emeritusmustapha": raise HTTPException(status_code=403)
-    db = SessionLocal()
-    try:
-        db.query(UserDB).filter(UserDB.username == target).delete()
-        db.query(MessageDB).filter(or_(MessageDB.sender==target, MessageDB.receiver==target)).delete()
-        db.commit()
-        return {"status": "deleted"}
     finally: db.close()
 
 class ConnectionManager:
